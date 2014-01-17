@@ -3,7 +3,7 @@
 
 options:
 -h, --help Show this help
--n, --no-gui create AST pdf
+-n, --no-gui
 
 params:
 -m VALUE, --maxtime=VALUE  Max execution time of genetic algorithm.
@@ -16,27 +16,29 @@ import sys
 import getopt
 import os
 
+
 def usage():
     """Prints the module how to usage instructions to the console"
     """
     print(__doc__)
 
+
 def get_argv_params():
     """Recuperates the arguments from the command line
     """
+    opts = []
     try:
         opts = getopt.getopt(
             sys.argv[1:],
             "hnm:",
-            ["help","no-gui","maxtime="] )[0]
+            ["help", "no-gui", "maxtime="])[0]
     except getopt.GetoptError:
         usage()
         print("Wrong options or params.")
         exit(2)
         
     gui = True
-    maxtime = 0
-    filename = None
+    max_time = 0
     
     for opt, arg in opts:
         if opt in ("-h", "--help"):
@@ -45,17 +47,23 @@ def get_argv_params():
         elif opt in ("-n", "--no-gui"):
             gui = False
         elif opt in ("-m", "--maxtime"):
-            maxtime = arg
+            max_time = arg
             
     filename = sys.argv[-1]
-    if not  os.path.exists(filename) or len(sys.argv) <= 1:
+    if not os.path.exists(filename) or len(sys.argv) <= 1:
         usage()
         print("invalid city file: %s" % filename)
         exit(2)
 
-    return (gui, maxtime, filename)
+    return gui, max_time, filename
+
+
+def ga_solve(file=None, gui=True, max_time=0):
+    pass
 
 if __name__ == "__main__":
-    (GUI, MAXTIME, FILENAME) = get_argv_params()
-    
-    print("args gui: %s maxtime: %s filename: %s" % (GUI, MAXTIME, FILENAME))
+    (GUI, MAX_TIME, FILENAME) = get_argv_params()
+    print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
+    ga_solve(FILENAME, GUI, MAX_TIME)
+
+
