@@ -65,7 +65,6 @@ class Problem:
     NB_POPULATION = 1000
     MUTATION_RATE = 0.01
     MAX_GENERATION_ALLOWED = 100000
-    CROSSOVER_RATE = 0.7
 
     def __init__(self, cities):
         self.cities = []
@@ -86,6 +85,7 @@ class Problem:
 
         for i in range(0, Problem.MAX_GENERATION_ALLOWED):
             fitness_scores_total = 0.0
+            old_best_solution = self.best_solution
 
             for p in self.population:
                 p.fitness_score = self.fitness_score(p)
@@ -93,17 +93,25 @@ class Problem:
                 if p.fitness_score < self.best_solution.fitness_score:
                     self.best_solution = p
 
-            print('Generation : ', i+1, self.best_solution)
+            if old_best_solution != self.best_solution:
+                print('Generation : ', i+1, self.best_solution)
 
-            solution1 = self.roulette(fitness_scores_total)
-            solution2 = solution1
-            while solution2 == solution1:
-                solution2 = self.roulette(fitness_scores_total)
+            new_population = []
 
-            if random() < Problem.CROSSOVER_RATE:
-                self.population.append(Problem.crossover(solution1, solution2, self.keys, self.nb_char))
-            Problem.mutate(solution1)
-            Problem.mutate(solution2)
+            while len(new_population) != Problem.NB_POPULATION:
+                solution1 = self.roulette(fitness_scores_total)
+                solution2 = solution1
+                while solution2 == solution1:
+                    solution2 = self.roulette(fitness_scores_total)
+
+                new_population.append(Problem.crossover(solution1, solution2, self.keys, self.nb_char))
+                new_population.append(Problem.crossover(solution2, solution1, self.keys, self.nb_char))
+                Problem.mutate(solution1)
+                Problem.mutate(solution2)
+                new_population.append(solution1)
+                new_population.append(solution2)
+
+            self.population = new_population
 
     def roulette(self, fitness_scores_total):
         fitness_score_goal = random()*fitness_scores_total
