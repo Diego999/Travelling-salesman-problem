@@ -43,7 +43,7 @@ class Town:
 class Solution:
     def __init__(self, chromosome):
         self.chromosome = chromosome
-        self.fitness_score = 0.0
+        self.fitness_score = -1.0
 
     def __repr__(self):
         return " ".join(self.chromosome) + " : " + str(self.fitness_score)
@@ -57,10 +57,13 @@ class Solution:
     def __setitem__(self, key, value):
         self.chromosome[key] = value
 
+    def index(self, value):
+        return self.chromosome.index(str(value))
+
 
 class Problem:
     NB_POPULATION = 1000
-    MUTATION_RATE = 1
+    MUTATION_RATE = 0.01
     MAX_GENERATION_ALLOWED = 100000
 
     def __init__(self, cities):
@@ -77,13 +80,14 @@ class Problem:
         self.create_population()
 
     def generate(self):
+        self.best_solution = Solution([])
+        self.best_solution.fitness_score = float('inf')
+
         for i in range(0, Problem.MAX_GENERATION_ALLOWED):
             fitness_scores_total = 0.0
-            self.best_solution = Solution([])
-            self.best_solution.fitness_score = float('inf')
-
             for p in self.population:
-                p.fitness_score = self.fitness_score(p)
+                if p.fitness_score < 0:
+                    p.fitness_score = self.fitness_score(p)
                 fitness_scores_total += p.fitness_score
                 if p.fitness_score < self.best_solution.fitness_score:
                     self.best_solution = p
@@ -93,9 +97,11 @@ class Problem:
             while solution2 == solution1:
                 solution2 = self.roulette(fitness_scores_total)
 
-            Problem.crossover(solution1, solution2)
+            self.population.append(Problem.crossover(solution1, solution2, self.keys))
             Problem.mutate(solution1)
             Problem.mutate(solution2)
+            print(self.best_solution)
+
 
     def roulette(self, fitness_scores_total):
         fitness_score_goal = random()*fitness_scores_total
@@ -118,12 +124,42 @@ class Problem:
                     current.append(gene)
                     keys.pop(gene_index)
                     j += 1
-
             self.population.append(Solution(current))
 
     @staticmethod
-    def crossover(solution1, solution2):
-        pass
+    def crossover(ga, gb, cities):
+        fa, fb = True, True
+        n = len(cities)
+        town = randint(0, n-1)
+        x = original_x = ga.index(town)
+        y = gb.index(town)
+        g = [town]
+        while fa or fb:
+            x = (x - 1) % n
+            y = (y + 1) % n
+            if fa:
+                if ga[x] not in g:
+                    g.insert(0, ga[x])
+                else:
+                    fa = False
+            if fb:
+                if gb[y] not in g:
+                    g.append(gb[y])
+                else:
+                    fb = False
+
+        remaining_towns = []
+        if len(g) < len(ga):
+            while x != original_x:
+                x = (x - 1) % n
+                if ga[x] not in g:
+                    remaining_towns.append(ga[x])
+            while len(remaining_towns) != 0:
+                index = randint(0, len(remaining_towns)-1)
+                g.append(remaining_towns[index])
+                remaining_towns.pop(index)
+
+        return Solution(g)
 
     @staticmethod
     def mutate(solution):
