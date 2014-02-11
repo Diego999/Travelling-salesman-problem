@@ -46,16 +46,16 @@ class Solution:
         self.fitness_score = -1.0
 
     def __repr__(self):
-        return " ".join(self.chromosome) + " : " + str(self.fitness_score)
+        return str(self.fitness_score) + " : " + " ".join(self.chromosome)
 
     def __len__(self):
         return len(self.chromosome)
 
     def __getitem__(self, item):
-        return self.chromosome[item]
+        return str(self.chromosome[item])
 
     def __setitem__(self, key, value):
-        self.chromosome[key] = value
+        self.chromosome[key] = str(value)
 
     def index(self, value):
         return self.chromosome.index(str(value))
@@ -65,6 +65,7 @@ class Problem:
     NB_POPULATION = 1000
     MUTATION_RATE = 0.01
     MAX_GENERATION_ALLOWED = 100000
+    CROSSOVER_RATE = 0.7
 
     def __init__(self, cities):
         self.cities = []
@@ -85,6 +86,8 @@ class Problem:
 
         for i in range(0, Problem.MAX_GENERATION_ALLOWED):
             fitness_scores_total = 0.0
+            old_solution = self.best_solution
+
             for p in self.population:
                 if p.fitness_score < 0:
                     p.fitness_score = self.fitness_score(p)
@@ -92,16 +95,18 @@ class Problem:
                 if p.fitness_score < self.best_solution.fitness_score:
                     self.best_solution = p
 
+            if old_solution != self.best_solution:
+                print(self.best_solution)
+
             solution1 = self.roulette(fitness_scores_total)
             solution2 = solution1
             while solution2 == solution1:
                 solution2 = self.roulette(fitness_scores_total)
 
-            self.population.append(Problem.crossover(solution1, solution2, self.keys))
+            if random() < Problem.CROSSOVER_RATE:
+                self.population.append(Problem.crossover(solution1, solution2, self.keys, self.nb_char))
             Problem.mutate(solution1)
             Problem.mutate(solution2)
-            print(self.best_solution)
-
 
     def roulette(self, fitness_scores_total):
         fitness_score_goal = random()*fitness_scores_total
@@ -127,11 +132,11 @@ class Problem:
             self.population.append(Solution(current))
 
     @staticmethod
-    def crossover(ga, gb, cities):
+    def crossover(ga, gb, cities, nb_char):
         fa, fb = True, True
         n = len(cities)
-        town = randint(0, n-1)
-        x = original_x = ga.index(town)
+        town = str(randint(0, n-1)).zfill(nb_char)
+        x = ga.index(town)
         y = gb.index(town)
         g = [town]
         while fa or fb:
@@ -150,10 +155,11 @@ class Problem:
 
         remaining_towns = []
         if len(g) < len(ga):
-            while x != original_x:
+            while len(g)+len(remaining_towns) != n:
                 x = (x - 1) % n
                 if ga[x] not in g:
                     remaining_towns.append(ga[x])
+
             while len(remaining_towns) != 0:
                 index = randint(0, len(remaining_towns)-1)
                 g.append(remaining_towns[index])
@@ -186,7 +192,7 @@ class Problem:
             nb_char += 1
         nb_char -= 1
 
-        return (nb_char, [str(i).zfill(nb_char) for i in range(0, len(cities))])
+        return nb_char, [str(i).zfill(nb_char) for i in range(0, len(cities))]
 
 
 def usage():
