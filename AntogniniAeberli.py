@@ -86,17 +86,14 @@ class Problem:
 
         for i in range(0, Problem.MAX_GENERATION_ALLOWED):
             fitness_scores_total = 0.0
-            old_solution = self.best_solution
 
             for p in self.population:
-                if p.fitness_score < 0:
-                    p.fitness_score = self.fitness_score(p)
+                p.fitness_score = self.fitness_score(p)
                 fitness_scores_total += p.fitness_score
                 if p.fitness_score < self.best_solution.fitness_score:
                     self.best_solution = p
 
-            if old_solution != self.best_solution:
-                print(self.best_solution)
+            print('Generation : ', i+1, self.best_solution)
 
             solution1 = self.roulette(fitness_scores_total)
             solution2 = solution1
