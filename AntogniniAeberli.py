@@ -79,49 +79,6 @@ class Problem:
         self.population = []
         self.create_population()
 
-    def generate(self):
-        self.best_solution = Solution([])
-        self.best_solution.fitness_score = float('inf')
-
-        for i in range(0, Problem.MAX_GENERATION_ALLOWED):
-            fitness_scores_total = 0.0
-            old_best_solution = self.best_solution
-
-            for p in self.population:
-                p.fitness_score = self.fitness_score(p)
-                fitness_scores_total += p.fitness_score
-                if p.fitness_score < self.best_solution.fitness_score:
-                    self.best_solution = p
-
-            if old_best_solution != self.best_solution:
-                print('Generation : ', i+1, self.best_solution)
-
-            new_population = []
-
-            while len(new_population) != Problem.NB_POPULATION:
-                solution1 = self.roulette(fitness_scores_total)
-                solution2 = solution1
-                while solution2 == solution1:
-                    solution2 = self.roulette(fitness_scores_total)
-
-                new_population.append(Problem.crossover(solution1, solution2, self.keys, self.nb_char))
-                new_population.append(Problem.crossover(solution2, solution1, self.keys, self.nb_char))
-                Problem.mutate(solution1)
-                Problem.mutate(solution2)
-                new_population.append(solution1)
-                new_population.append(solution2)
-
-            self.population = new_population
-
-    def roulette(self, fitness_scores_total):
-        fitness_score_goal = random()*fitness_scores_total
-        fitness_scores_sum = 0.0
-        for p in self.population:
-            fitness_scores_sum += p.fitness_score
-            if fitness_scores_sum >= fitness_score_goal:
-                return p
-        return self.population[-1]
-
     def create_population(self):
         for i in range(0, Problem.NB_POPULATION):
             current = []
@@ -135,6 +92,60 @@ class Problem:
                     keys.pop(gene_index)
                     j += 1
             self.population.append(Solution(current))
+
+    def generate(self):
+        self.best_solution = Solution([])
+        self.best_solution.fitness_score = float('inf')
+
+        for i in range(0, Problem.MAX_GENERATION_ALLOWED):
+            fitness_scores_total = 0.0
+            old_best_solution = self.best_solution
+
+            for p in self.population:
+                p.fitness_score = Problem.fitness_score(p, self.cities_dict)
+                fitness_scores_total += p.fitness_score
+                if p.fitness_score < self.best_solution.fitness_score:
+                    self.best_solution = p
+
+            if old_best_solution != self.best_solution:
+                print('Generation : ', i+1, self.best_solution)
+
+            new_population = []
+
+            while len(new_population) != Problem.NB_POPULATION:
+                solution1 = Problem.roulette(fitness_scores_total, self.population)
+                solution2 = solution1
+                while solution2 == solution1:
+                    solution2 = Problem.roulette(fitness_scores_total, self.population)
+
+                new_population.append(Problem.crossover(solution1, solution2, self.keys, self.nb_char))
+                new_population.append(Problem.crossover(solution2, solution1, self.keys, self.nb_char))
+                Problem.mutate(solution1)
+                Problem.mutate(solution2)
+                new_population.append(solution1)
+                new_population.append(solution2)
+
+            self.population = new_population
+
+    @staticmethod
+    def roulette(fitness_scores_total, population):
+        fitness_score_goal = random()*fitness_scores_total
+        fitness_scores_sum = 0.0
+        for p in population:
+            fitness_scores_sum += p.fitness_score
+            if fitness_scores_sum >= fitness_score_goal:
+                return p
+        return population[-1]
+
+    @staticmethod
+    def tournament(solution1, solution2):
+        """Tournament selection often yields a more diverse population than
+        the fitness proportionate selection (roulette wheel). Machine Learning, P256"""
+        p1 = float(solution1.fitness_score)/(solution1.fitness_score+solution2.fitness_score)
+        p2 = float(solution2.fitness_score)/(solution1.fitness_score+solution2.fitness_score)
+        p1, p2 = p2, p1  # The shorter result, the better is. We inverse the probability
+
+        return p1 if random() <= p1 else p2
 
     @staticmethod
     def crossover(ga, gb, cities, nb_char):
@@ -181,11 +192,12 @@ class Problem:
                 gene2 = randint(0, len(solution)-1)
             solution[gene2], solution[gene1] = solution[gene1], solution[gene2]
 
-    def fitness_score(self, solution):
+    @staticmethod
+    def fitness_score(solution, cities_dict):
         score = 0.0
         for s in range(0, len(solution)-1):
-            score += Town.compute_distance(self.cities_dict[solution[s]], self.cities_dict[solution[s+1]])
-        score += Town.compute_distance(self.cities_dict[solution[0]], self.cities_dict[solution[-1]])
+            score += Town.compute_distance(cities_dict[solution[s]], cities_dict[solution[s+1]])
+        score += Town.compute_distance(cities_dict[solution[0]], cities_dict[solution[-1]])
         return score
 
     @staticmethod
