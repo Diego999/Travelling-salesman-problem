@@ -64,6 +64,7 @@ class Solution:
 class Problem:
     NB_POPULATION = 1000
     MUTATION_RATE = 0.01
+    CROSSOVER_FRACTION = 0.7
     MAX_GENERATION_ALLOWED = 100000
 
     def __init__(self, cities):
@@ -77,25 +78,28 @@ class Problem:
 
         self.best_solution = ""
         self.population = []
-        self.create_population()
 
-    def create_population(self):
+    @staticmethod
+    def create_population(original_keys):
+        population = []
         for i in range(0, Problem.NB_POPULATION):
             current = []
             j = 0
-            keys = deepcopy(self.keys)
-            while j < len(self.keys):
+            keys = deepcopy(original_keys)
+            while j < len(original_keys):
                 gene_index = randint(0, len(keys)-1)
                 gene = keys[gene_index]
                 if gene not in current:
                     current.append(gene)
                     keys.pop(gene_index)
                     j += 1
-            self.population.append(Solution(current))
+            population.append(Solution(current))
+        return population
 
     def generate(self):
         self.best_solution = Solution([])
         self.best_solution.fitness_score = float('inf')
+        self.population = self.create_population(self.keys)
 
         for i in range(0, Problem.MAX_GENERATION_ALLOWED):
             fitness_scores_total = 0.0
@@ -111,21 +115,56 @@ class Problem:
                 print('Generation : ', i+1, self.best_solution)
 
             new_population = []
-
             while len(new_population) != Problem.NB_POPULATION:
-                solution1 = Problem.roulette(fitness_scores_total, self.population)
-                solution2 = solution1
-                while solution2 == solution1:
-                    solution2 = Problem.roulette(fitness_scores_total, self.population)
-
-                new_population.append(Problem.crossover(solution1, solution2, self.keys, self.nb_char))
-                new_population.append(Problem.crossover(solution2, solution1, self.keys, self.nb_char))
-                Problem.mutate(solution1)
-                Problem.mutate(solution2)
-                new_population.append(solution1)
-                new_population.append(solution2)
-
+                Problem.selection_process(self.population, new_population, fitness_scores_total)
+                Problem.crossover_process(self.population, new_population, fitness_scores_total, self.keys, self.nb_char)
+                Problem.mutation_process(new_population)
             self.population = new_population
+
+    @staticmethod
+    def fitness_score(solution, cities_dict):
+        score = 0.0
+        for s in range(0, len(solution)-1):
+            score += Town.compute_distance(cities_dict[solution[s]], cities_dict[solution[s+1]])
+        score += Town.compute_distance(cities_dict[solution[0]], cities_dict[solution[-1]])
+        return score
+
+    @staticmethod
+    def create_alphabet(cities):
+        len_cities = len(cities)
+        nb_char = 1
+        while len_cities > 1:
+            len_cities /= 10
+            nb_char += 1
+        nb_char -= 1
+
+        return nb_char, [str(i).zfill(nb_char) for i in range(0, len(cities))]
+
+    @staticmethod
+    def selection_process(population_original, new_population, fitness_scores_total):
+        population = deepcopy(population_original)
+        return Problem.select_roulette(population, new_population, fitness_scores_total)
+
+    @staticmethod
+    def select_roulette(population, new_population, fitness_scores_total):
+        for i in range(0, int((1-Problem.CROSSOVER_FRACTION)*Problem.NB_POPULATION)):
+            solution = Problem.roulette(fitness_scores_total, population)
+            new_population.append(solution)
+            population.remove(solution)
+            fitness_scores_total -= solution.fitness_score
+        return new_population
+
+    @staticmethod
+    def select_tournament(population, new_population):
+        for i in range(0, int((1-Problem.CROSSOVER_FRACTION)*Problem.NB_POPULATION)):
+            key1 = randint(0, len(population)-1)
+            key2 = key1
+            while key1 == key2:
+                key2 = randint(0, len(population)-1)
+            solution = Problem.tournament(population[key1], population[key2])
+            new_population.append(solution)
+            population.remove(solution)
+        return new_population
 
     @staticmethod
     def roulette(fitness_scores_total, population):
@@ -146,6 +185,16 @@ class Problem:
         p1, p2 = p2, p1  # The shorter result, the better is. We inverse the probability
 
         return p1 if random() <= p1 else p2
+
+    @staticmethod
+    def crossover_process(original_population, new_population, fitness_scores_total, keys, nb_char):
+        for i in range(0, int(Problem.NB_POPULATION*Problem.CROSSOVER_FRACTION)/2):
+            solution1 = Problem.roulette(fitness_scores_total, original_population)
+            solution2 = solution1
+            while solution2 == solution1:
+                solution2 = Problem.roulette(fitness_scores_total, original_population)
+            new_population.append(Problem.crossover(solution1, solution2, keys, nb_char))
+            new_population.append(Problem.crossover(solution2, solution1, keys, nb_char))
 
     @staticmethod
     def crossover(ga, gb, cities, nb_char):
@@ -184,6 +233,17 @@ class Problem:
         return Solution(g)
 
     @staticmethod
+    def mutation_process(new_population):
+        nb_mutation = int(Problem.MUTATION_RATE*Problem.NB_POPULATION)
+        history = []
+        for i in range(0, nb_mutation):
+            solution = new_population[randint(0, len(new_population)-1)]
+            while solution in history:
+                solution = new_population[randint(0, len(new_population)-1)]
+            history.append(solution)
+            Problem.mutate(solution)
+
+    @staticmethod
     def mutate(solution):
         if random() < Problem.MUTATION_RATE:
             gene1 = randint(0, len(solution)-1)
@@ -191,25 +251,6 @@ class Problem:
             while gene2 == gene1:
                 gene2 = randint(0, len(solution)-1)
             solution[gene2], solution[gene1] = solution[gene1], solution[gene2]
-
-    @staticmethod
-    def fitness_score(solution, cities_dict):
-        score = 0.0
-        for s in range(0, len(solution)-1):
-            score += Town.compute_distance(cities_dict[solution[s]], cities_dict[solution[s+1]])
-        score += Town.compute_distance(cities_dict[solution[0]], cities_dict[solution[-1]])
-        return score
-
-    @staticmethod
-    def create_alphabet(cities):
-        len_cities = len(cities)
-        nb_char = 1
-        while len_cities > 1:
-            len_cities /= 10
-            nb_char += 1
-        nb_char -= 1
-
-        return nb_char, [str(i).zfill(nb_char) for i in range(0, len(cities))]
 
 
 def usage():
