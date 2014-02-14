@@ -65,7 +65,7 @@ class Problem:
     NB_POPULATION = 1000
     MUTATION_RATE = 0.01
     CROSSOVER_FRACTION = 0.7
-    MAX_GENERATION_ALLOWED = 100000
+    MAX_GENERATION_ALLOWED = 10000
 
     def __init__(self, cities):
         self.cities = []
@@ -184,7 +184,7 @@ class Problem:
         p2 = float(solution2.fitness_score)/(solution1.fitness_score+solution2.fitness_score)
         p1, p2 = p2, p1  # The shorter result, the better is. We inverse the probability
 
-        return p1 if random() <= p1 else p2
+        return solution1 if random() <= p1 else solution2
 
     @staticmethod
     def crossover_process(original_population, new_population, fitness_scores_total, keys, nb_char):
