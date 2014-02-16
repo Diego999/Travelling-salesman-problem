@@ -20,6 +20,7 @@ from pygame.locals import KEYDOWN, QUIT, MOUSEBUTTONDOWN, K_RETURN, K_ESCAPE
 from math import sqrt
 from random import randint, random
 from copy import deepcopy
+from random import shuffle
 
 screen_x = 500
 screen_y = 500
@@ -80,19 +81,13 @@ class Problem:
         self.population = []
 
     @staticmethod
-    def create_population(original_keys):
+    def create_population(keys):
         population = []
         for i in range(0, Problem.NB_POPULATION):
             current = []
-            j = 0
-            keys = deepcopy(original_keys)
-            while j < len(original_keys):
-                gene_index = randint(0, len(keys)-1)
-                gene = keys[gene_index]
-                if gene not in current:
-                    current.append(gene)
-                    keys.pop(gene_index)
-                    j += 1
+            shuffle(keys)  # Use Fisher-Yates shuffle, O(n). Better than copying and removing
+            for k in keys:
+                current.append(k)
             population.append(Solution(current))
         return population
 
