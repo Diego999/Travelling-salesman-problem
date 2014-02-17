@@ -221,11 +221,9 @@ class Problem:
                 x = (x - 1) % n
                 if ga[x] not in g:
                     remaining_towns.append(ga[x])
-
+            shuffle(remaining_towns)
             while len(remaining_towns) != 0:
-                index = randint(0, len(remaining_towns)-1)
-                g.append(remaining_towns[index])
-                remaining_towns.pop(index)
+                g.append(remaining_towns.pop())
 
         return Solution(g)
 
