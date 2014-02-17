@@ -18,9 +18,7 @@ import os
 import pygame
 from pygame.locals import KEYDOWN, QUIT, MOUSEBUTTONDOWN, K_RETURN, K_ESCAPE
 from math import sqrt
-from random import randint, random
-from copy import deepcopy
-from random import shuffle
+from random import randint, random, shuffle
 
 screen_x = 500
 screen_y = 500
@@ -137,7 +135,7 @@ class Problem:
 
     @staticmethod
     def selection_process(population_original, new_population, fitness_scores_total):
-        population = deepcopy(population_original)
+        population = population_original[:]
         return Problem.select_roulette(population, new_population, fitness_scores_total)
 
     @staticmethod
