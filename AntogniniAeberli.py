@@ -144,9 +144,10 @@ class Problem:
     def select_roulette(population, new_population, fitness_scores_total):
         for i in range(0, int((1-Problem.CROSSOVER_FRACTION)*Problem.NB_POPULATION)):
             solution = Problem.roulette(fitness_scores_total, population)
-            new_population.append(solution)
-            population.remove(solution)
-            fitness_scores_total -= solution.fitness_score
+            fitness_scores_total -= population[solution].fitness_score
+            new_population.append(population[solution])
+            population[solution], population[-1] = population[-1], population[solution]
+            population.pop()
         return new_population
 
     @staticmethod
@@ -156,27 +157,28 @@ class Problem:
             key2 = key1
             while key1 == key2:
                 key2 = randint(0, len(population)-1)
-            solution = Problem.tournament(population[key1], population[key2])
-            new_population.append(solution)
-            population.remove(solution)
+            solution = Problem.tournament(key1,key2, population)
+            new_population.append(population[solution])
+            population[solution], population[-1] = population[-1], population[solution]
+            population.pop()
         return new_population
 
     @staticmethod
     def roulette(fitness_scores_total, population):
         fitness_score_goal = random()*fitness_scores_total
         fitness_scores_sum = 0.0
-        for p in population:
-            fitness_scores_sum += p.fitness_score
+        for p in range(0, len(population)):
+            fitness_scores_sum += population[p].fitness_score
             if fitness_scores_sum >= fitness_score_goal:
                 return p
-        return population[-1]
+        return len(population)-1
 
     @staticmethod
-    def tournament(solution1, solution2):
+    def tournament(solution1, solution2, population):
         """Tournament selection often yields a more diverse population than
         the fitness proportionate selection (roulette wheel). Machine Learning, P256"""
-        p1 = float(solution1.fitness_score)/(solution1.fitness_score+solution2.fitness_score)
-        p2 = float(solution2.fitness_score)/(solution1.fitness_score+solution2.fitness_score)
+        p1 = float(population[solution1].fitness_score)/(population[solution1].fitness_score+population[solution2].fitness_score)
+        p2 = float(population[solution2].fitness_score)/(population[solution1].fitness_score+population[solution2].fitness_score)
         p1, p2 = p2, p1  # The shorter result, the better is. We inverse the probability
 
         return solution1 if random() <= p1 else solution2
@@ -184,10 +186,10 @@ class Problem:
     @staticmethod
     def crossover_process(original_population, new_population, fitness_scores_total, keys, nb_char):
         for i in range(0, int(Problem.NB_POPULATION*Problem.CROSSOVER_FRACTION)/2):
-            solution1 = Problem.roulette(fitness_scores_total, original_population)
+            solution1 = original_population[Problem.roulette(fitness_scores_total, original_population)]
             solution2 = solution1
             while solution2 == solution1:
-                solution2 = Problem.roulette(fitness_scores_total, original_population)
+                solution2 = original_population[Problem.roulette(fitness_scores_total, original_population)]
             new_population.append(Problem.crossover(solution1, solution2, keys, nb_char))
             new_population.append(Problem.crossover(solution2, solution1, keys, nb_char))
 
