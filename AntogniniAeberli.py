@@ -17,7 +17,7 @@ import getopt
 import os
 import pygame
 from pygame.locals import KEYDOWN, QUIT, MOUSEBUTTONDOWN, K_RETURN, K_ESCAPE
-from math import sqrt
+from math import sqrt, pow
 from random import randint, random, shuffle
 from time import clock
 
@@ -31,16 +31,21 @@ class Town:
 
     @staticmethod
     def compute_distance(t1, t2):
-        return sqrt(abs(t1.x-t2.x)**2 + abs(t1.y-t2.y)**2)
+        return sqrt((t1.x-t2.x)**2 + (t1.y-t2.y)**2)
 
 
 class Solution:
     def __init__(self, chromosome):
         self.chromosome = chromosome
-        self.fitness_score = -1.0
+        self.distance = 0
+        self.has_to_be_computed = True
+
+    def set_distance(self, dist):
+        self.distance = dist
+        self.has_to_be_computed = False
 
     def __repr__(self):
-        return str(self.fitness_score) + " : " + " ".join(self.chromosome)
+        return str(self.distance) + " : " + " ".join(self.chromosome)
 
     def __len__(self):
         return len(self.chromosome)
@@ -50,34 +55,35 @@ class Solution:
 
     def __setitem__(self, key, value):
         self.chromosome[key] = str(value)
+        self.has_to_be_computed = True
 
     def index(self, value):
         return self.chromosome.index(str(value))
 
 
 class Problem:
-    NB_POPULATION = 100
-    MUTATION_RATE = 0.01
+    NB_POPULATION = 500 # ~10x number of cities
+    SIZE_TOURNAMENT_BATTLE = 15
+    MUTATION_RATE = 0.1
     CROSSOVER_FRACTION = 0.7
-    MAX_GENERATION_ALLOWED = 10000
+    MAX_GENERATION_ALLOWED = 1000
 
     def __init__(self, cities):
         self.cities = []
         self.cities_dict = {}
         self.nb_char, self.keys = Problem.create_alphabet(cities)
-        for c in range(0, len(cities)):
+        for c in xrange(0, len(cities)):
             town = Town(self.keys[c], cities[c][0], cities[c][1], cities[c][2])
             self.cities_dict[town.id] = town
             self.cities.append(town)
 
-        self.fitness_score_total = 0.0
         self.best_solution = ""
         self.population = []
 
     @staticmethod
     def create_population(keys):
         population = []
-        for i in range(0, Problem.NB_POPULATION):
+        for i in xrange(0, Problem.NB_POPULATION):
             current = []
             shuffle(keys)  # Use Fisher-Yates shuffle, O(n). Better than copying and removing
             for k in keys:
@@ -87,37 +93,34 @@ class Problem:
 
     def initialize(self):
         self.best_solution = Solution([])
-        self.best_solution.fitness_score = float('inf')
+        self.best_solution.distance = float('inf')
         self.population = self.create_population(self.keys)
-        self.compute_all_fitness_scores()
+        self.compute_all_distances()
 
-    def compute_all_fitness_scores(self):
-        self.fitness_score_total = 0.0
+    def compute_all_distances(self):
         for p in self.population:
-            p.fitness_score = Problem.fitness_score(p, self.cities_dict)
-            self.fitness_score_total += p.fitness_score
-            if p.fitness_score < self.best_solution.fitness_score:
-                self.best_solution = p
+            if p.has_to_be_computed:
+                Problem.compute_distance(p, self.cities_dict)
+                if p.distance < self.best_solution.distance:
+                    self.best_solution = p
 
     def generate(self):
         new_population = []
-        while len(new_population) != Problem.NB_POPULATION:
-            Problem.selection_process(self.population, new_population, self.fitness_score_total)
-            Problem.crossover_process(self.population, new_population, self.fitness_score_total, self.keys, self.nb_char)
-            Problem.mutation_process(new_population)
+        Problem.selection_process(self.population, new_population)
+        Problem.crossover_process(new_population, self.keys, self.nb_char)
+        Problem.mutation_process(new_population)
         self.population = new_population
-
-        self.compute_all_fitness_scores()
+        self.compute_all_distances()
 
         return self.best_solution
 
     @staticmethod
-    def fitness_score(solution, cities_dict):
+    def compute_distance(solution, cities_dict):
         score = 0.0
-        for s in range(0, len(solution)-1):
+        for s in xrange(0, len(solution)-1):
             score += Town.compute_distance(cities_dict[solution[s]], cities_dict[solution[s+1]])
         score += Town.compute_distance(cities_dict[solution[0]], cities_dict[solution[-1]])
-        return score
+        solution.set_distance(score)
 
     @staticmethod
     def create_alphabet(cities):
@@ -128,65 +131,28 @@ class Problem:
             nb_char += 1
         nb_char -= 1
 
-        return nb_char, [str(i).zfill(nb_char) for i in range(0, len(cities))]
+        return nb_char, [str(i).zfill(nb_char) for i in xrange(0, len(cities))]
 
     @staticmethod
-    def selection_process(population_original, new_population, fitness_scores_total):
-        population = population_original[:]
-        return Problem.select_roulette(population, new_population, fitness_scores_total)
+    def selection_process(population, new_population):
+        for i in xrange(0, int(round((1-Problem.CROSSOVER_FRACTION)*Problem.NB_POPULATION))):
+            indices = set()
+            for j in xrange(0, Problem.SIZE_TOURNAMENT_BATTLE):
+                k = randint(0, len(population)-1)
+                while k in indices:
+                    k = randint(0, len(population)-1)
+                indices.add(k)
+            winner = sorted(indices, key=lambda k:population[k].distance)[0]
+            population[winner], population[-1] = population[-1], population[winner]
+            new_population.append(population.pop())
 
     @staticmethod
-    def select_roulette(population, new_population, fitness_scores_total):
-        for i in range(0, int(round((1-Problem.CROSSOVER_FRACTION)*Problem.NB_POPULATION, 0))):
-            solution = Problem.roulette(fitness_scores_total, population)
-            fitness_scores_total -= population[solution].fitness_score
-            new_population.append(population[solution])
-            population[solution], population[-1] = population[-1], population[solution]
-            population.pop()
-        return new_population
-
-    @staticmethod
-    def select_tournament(population, new_population):
-        """Tournament selection often yields a more diverse population than
-        the fitness proportionate selection (roulette wheel). Machine Learning, P256"""
-        for i in range(0, int(round((1-Problem.CROSSOVER_FRACTION)*Problem.NB_POPULATION, 0))):
-            key1 = randint(0, len(population)-1)
-            key2 = key1
-            while key1 == key2:
-                key2 = randint(0, len(population)-1)
-            solution = Problem.tournament(key1, key2, population)
-            new_population.append(population[solution])
-            population[solution], population[-1] = population[-1], population[solution]
-            population.pop()
-        return new_population
-
-    @staticmethod
-    def roulette(fitness_scores_total, population):
-        fitness_score_goal = random()*fitness_scores_total
-        fitness_scores_sum = 0.0
-        for p in range(0, len(population)):
-            fitness_scores_sum += population[p].fitness_score
-            if fitness_scores_sum >= fitness_score_goal:
-                return p
-        return len(population)-1
-
-    @staticmethod
-    def tournament(solution1, solution2, population):
-        """Tournament selection often yields a more diverse population than
-        the fitness proportionate selection (roulette wheel). Machine Learning, P256"""
-        p1 = float(population[solution1].fitness_score)/(population[solution1].fitness_score+population[solution2].fitness_score)
-        p2 = float(population[solution2].fitness_score)/(population[solution1].fitness_score+population[solution2].fitness_score)
-        p1, p2 = p2, p1  # The shorter result, the better is. We inverse the probability
-
-        return solution1 if random() <= p1 else solution2
-
-    @staticmethod
-    def crossover_process(original_population, new_population, fitness_scores_total, keys, nb_char):
-        for i in range(0, int(Problem.NB_POPULATION*Problem.CROSSOVER_FRACTION)/2):
-            solution1 = original_population[Problem.roulette(fitness_scores_total, original_population)]
+    def crossover_process(new_population, keys, nb_char):
+        for i in xrange(0, int(round(Problem.NB_POPULATION*Problem.CROSSOVER_FRACTION)/2)):
+            solution1 = new_population[randint(0, len(new_population)-1)]
             solution2 = solution1
             while solution2 == solution1:
-                solution2 = original_population[Problem.roulette(fitness_scores_total, original_population)]
+                solution2 = new_population[randint(0, len(new_population)-1)]
             new_population.append(Problem.crossover(solution1, solution2, keys, nb_char))
             new_population.append(Problem.crossover(solution2, solution1, keys, nb_char))
 
@@ -198,6 +164,7 @@ class Problem:
         x = ga.index(town)
         y = gb.index(town)
         g = [town]
+
         while fa or fb:
             x = (x - 1) % n
             y = (y + 1) % n
@@ -233,7 +200,7 @@ class Problem:
             while solution in history:
                 solution = new_population[randint(0, len(new_population)-1)]
             history.append(solution)
-            Problem.mutate_swap_town(solution)
+            Problem.mutate_reverse_path(solution)
 
     @staticmethod
     def mutate_swap_town(solution):
@@ -269,14 +236,15 @@ class TS_GUI:
     font_color = [255, 255, 255]
     name_cities = 'v'
 
-    def __init__(self):
-        pygame.init()
-        self.window = pygame.display.set_mode((TS_GUI.screen_x, TS_GUI.screen_y))
-        pygame.display.set_caption('Travelling Salesman Problem - Antognini Aeberli')
-        self.screen = pygame.display.get_surface()
-        self.font = pygame.font.Font(None, 30)
-        pygame.display.flip()
-        self.cities_dict = {}
+    def __init__(self, gui = True):
+        if gui:
+            pygame.init()
+            self.window = pygame.display.set_mode((TS_GUI.screen_x, TS_GUI.screen_y))
+            pygame.display.set_caption('Travelling Salesman Problem - Antognini Aeberli')
+            self.screen = pygame.display.get_surface()
+            self.font = pygame.font.Font(None, 30)
+            pygame.display.flip()
+            self.cities_dict = {}
 
     def draw_cities(self):
         self.screen.fill(0)
@@ -293,12 +261,12 @@ class TS_GUI:
     def draw_path(self, solution, nb_generation):
         self.draw_cities()
         cities_to_draw = []
-        for c in range(0, len(solution)):
+        for c in xrange(0, len(solution)):
             town = self.cities_dict[solution[c]]
             cities_to_draw.append((int(town.x), int(town.y)))
 
         pygame.draw.lines(self.screen, self.city_color, True, cities_to_draw) # True close the polygon between the first and last point
-        text = self.font.render("Generation %i, Length %s" % (nb_generation, solution.fitness_score), True, TS_GUI.font_color)
+        text = self.font.render("Generation %i, Length %s" % (nb_generation, solution.distance), True, TS_GUI.font_color)
         self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y + TS_GUI.offset_y_between_text))
         pygame.display.flip()
 
@@ -335,7 +303,7 @@ class TS_GUI:
                     self.draw_path(old_best_solution, i+1)
                     print("Generation " + str(i + 1) + " : " + str(best_solution))
                 i += 1
-            event = pygame.event.wait()
+            event = pygame.event.poll()
             if event.type == QUIT or (max_time > 0 and int(clock()-t0) >= max_time):
                 running = False
         return self.return_solution(problem.best_solution)
@@ -346,7 +314,7 @@ class TS_GUI:
         if max_time > 0:
             t0 = clock()
         print("Generation 0 : " + str(old_best_solution))
-        for i in range(0, Problem.MAX_GENERATION_ALLOWED):
+        for i in xrange(0, Problem.MAX_GENERATION_ALLOWED):
             best_solution = problem.generate()
             if old_best_solution != best_solution:
                 old_best_solution = best_solution
@@ -356,11 +324,10 @@ class TS_GUI:
         return self.return_solution(problem.best_solution)
 
     def return_solution(self, solution):
-        distance = solution.fitness_score
         cities = []
-        for c in range(0, len(solution)):
+        for c in xrange(0, len(solution)):
             cities.append(self.cities_dict[solution[c]].name)
-        return distance, cities
+        return solution.distance, cities
 
     def quit(self):
         pygame.quit()
@@ -408,9 +375,12 @@ def get_argv_params():
 
 def ga_solve(file=None, gui=True, max_time=0):
     cities = []
-    g = TS_GUI()
+    g = None
     if file is None:
+        g = TS_GUI()
         cities = g.read_cities()
+        if not gui:
+            pygame.quit()
     else:
         with open(file, 'r+') as f:
             for l in f.readlines():
@@ -418,17 +388,17 @@ def ga_solve(file=None, gui=True, max_time=0):
 
     problem = Problem(cities)
     problem.initialize()
-
+    if g is None:
+        g = TS_GUI(gui)
     g.cities_dict = problem.cities_dict
 
     if gui:
         return g.display(problem, max_time)
     else:
-        pygame.quit()
         return g.display_text_only(problem, max_time)
 
 if __name__ == "__main__":
-    (GUI, MAX_TIME, FILENAME) = (False, 0, 'data/pb050.txt')#get_argv_params()
+    (GUI, MAX_TIME, FILENAME) = (True, 0, None)#'data/pb050.txt')#get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
     print(ga_solve(FILENAME, GUI, MAX_TIME))
 
