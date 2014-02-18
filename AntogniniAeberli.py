@@ -259,8 +259,10 @@ class TS_GUI:
     offset_y = 50
     offset_y_between_text = 20
     city_color = [10, 10, 200]
+    city_start_color = [255, 0, 0]
     city_radius = 3
     font_color = [255, 255, 255]
+    name_cities = 'v'
 
     def __init__(self):
         pygame.init()
@@ -273,11 +275,17 @@ class TS_GUI:
 
     def draw_cities(self):
         self.screen.fill(0)
+        i = 0
         for c in self.cities_dict.values():
-            pygame.draw.circle(self.screen, TS_GUI.city_color, (int(c.x), int(c.y)), TS_GUI.city_radius)
+            self.draw_one_city(int(c.x), int(c.y), TS_GUI.city_start_color if i == 0 else TS_GUI.city_color)
             text = self.font.render("%i cities" % len(self.cities_dict), True, TS_GUI.font_color)
             self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y))
             pygame.display.flip()
+            i += 1
+
+    def draw_one_city(self, x, y, color):
+        pygame.draw.circle(self.screen, color, (int(x), int(y)), TS_GUI.city_radius)
+        pygame.display.flip()
 
     def draw_path(self, solution, nb_generation):
         self.draw_cities()
@@ -290,6 +298,21 @@ class TS_GUI:
         text = self.font.render("Generation %i, Length %s" % (nb_generation, solution.fitness_score), True, TS_GUI.font_color)
         self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y + TS_GUI.offset_y_between_text))
         pygame.display.flip()
+
+    def read_cities(self):
+        running = True
+        cities = []
+        i = 0
+        while running:
+            event = pygame.event.wait()
+            if event.type == MOUSEBUTTONDOWN:
+                x, y = pygame.mouse.get_pos()
+                cities.append([TS_GUI.name_cities + str(i), x, y])
+                self.draw_one_city(x, y, TS_GUI.city_start_color if i == 0 else TS_GUI.city_color)
+                i += 1
+            elif event.type == KEYDOWN and event.key == K_RETURN:
+                running = False
+        return cities
 
 
 def usage():
@@ -335,15 +358,13 @@ def get_argv_params():
 
 def ga_solve(file=None, gui=True, max_time=0):
     cities = []
+    g = TS_GUI()
     if file is None:
-        #Display GUI and wait a click button to end up the entry
-        pass
+        cities = g.read_cities()
     else:
-        cities = []
         with open(file, 'r+') as f:
             for l in f.readlines():
                 cities.append(l.split())
-    g = TS_GUI()
 
     problem = Problem(cities)
     g.cities_dict = problem.cities_dict
@@ -364,7 +385,7 @@ def ga_solve(file=None, gui=True, max_time=0):
             running = False
 
 if __name__ == "__main__":
-    (GUI, MAX_TIME, FILENAME) = (False, 0, 'data/pb010.txt')#get_argv_params()
+    (GUI, MAX_TIME, FILENAME) = (False, 0, None)#'data/pb010.txt')#get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
     ga_solve(FILENAME, GUI, MAX_TIME)
 
