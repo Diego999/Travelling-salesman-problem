@@ -246,6 +246,18 @@ class Problem:
             gene2 = randint(0, len(solution)-1)
         solution[gene2], solution[gene1] = solution[gene1], solution[gene2]
 
+    @staticmethod
+    def mutate_reverse_path(solution):
+        gene1 = randint(0, len(solution)-1)
+        gene2 = gene1
+        while gene2 == gene1:
+            gene2 = randint(0, len(solution)-1)
+        if gene1 > gene2:
+            gene1, gene2 = gene2, gene1
+        while gene1 < gene2:
+            solution[gene1], solution[gene2] = solution[gene2], solution[gene1]
+            gene1 += 1
+            gene2 -= 1
 
 def usage():
     """Prints the module how to usage instructions to the console"
