@@ -56,7 +56,7 @@ class Solution:
 
 
 class Problem:
-    NB_POPULATION = 1000
+    NB_POPULATION = 100
     MUTATION_RATE = 0.01
     CROSSOVER_FRACTION = 0.7
     MAX_GENERATION_ALLOWED = 10000
@@ -70,6 +70,7 @@ class Problem:
             self.cities_dict[town.id] = town
             self.cities.append(town)
 
+        self.fitness_score_total = 0.0
         self.best_solution = ""
         self.population = []
 
@@ -88,20 +89,23 @@ class Problem:
         self.best_solution = Solution([])
         self.best_solution.fitness_score = float('inf')
         self.population = self.create_population(self.keys)
+        self.compute_all_fitness_scores()
 
-    def generate(self):
-        fitness_scores_total = 0.0
-
+    def compute_all_fitness_scores(self):
+        self.fitness_score_total = 0.0
         for p in self.population:
             p.fitness_score = Problem.fitness_score(p, self.cities_dict)
-            fitness_scores_total += p.fitness_score
+            self.fitness_score_total += p.fitness_score
             if p.fitness_score < self.best_solution.fitness_score:
                 self.best_solution = p
 
+    def generate(self):
+        self.compute_all_fitness_scores()
+
         new_population = []
         while len(new_population) != Problem.NB_POPULATION:
-            Problem.selection_process(self.population, new_population, fitness_scores_total)
-            Problem.crossover_process(self.population, new_population, fitness_scores_total, self.keys, self.nb_char)
+            Problem.selection_process(self.population, new_population, self.fitness_score_total)
+            Problem.crossover_process(self.population, new_population, self.fitness_score_total, self.keys, self.nb_char)
             Problem.mutation_process(new_population)
         self.population = new_population
 
@@ -133,7 +137,7 @@ class Problem:
 
     @staticmethod
     def select_roulette(population, new_population, fitness_scores_total):
-        for i in range(0, int((1-Problem.CROSSOVER_FRACTION)*Problem.NB_POPULATION)):
+        for i in range(0, int(round((1-Problem.CROSSOVER_FRACTION)*Problem.NB_POPULATION, 0))):
             solution = Problem.roulette(fitness_scores_total, population)
             fitness_scores_total -= population[solution].fitness_score
             new_population.append(population[solution])
@@ -145,7 +149,7 @@ class Problem:
     def select_tournament(population, new_population):
         """Tournament selection often yields a more diverse population than
         the fitness proportionate selection (roulette wheel). Machine Learning, P256"""
-        for i in range(0, int((1-Problem.CROSSOVER_FRACTION)*Problem.NB_POPULATION)):
+        for i in range(0, int(round((1-Problem.CROSSOVER_FRACTION)*Problem.NB_POPULATION, 0))):
             key1 = randint(0, len(population)-1)
             key2 = key1
             while key1 == key2:
@@ -281,12 +285,10 @@ class TS_GUI:
             self.draw_one_city(int(c.x), int(c.y), TS_GUI.city_start_color if i == 0 else TS_GUI.city_color)
             text = self.font.render("%i cities" % len(self.cities_dict), True, TS_GUI.font_color)
             self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y))
-            pygame.display.flip()
             i += 1
 
     def draw_one_city(self, x, y, color):
         pygame.draw.circle(self.screen, color, (int(x), int(y)), TS_GUI.city_radius)
-        pygame.display.flip()
 
     def draw_path(self, solution, nb_generation):
         self.draw_cities()
@@ -310,44 +312,48 @@ class TS_GUI:
                 x, y = pygame.mouse.get_pos()
                 cities.append([TS_GUI.name_cities + str(i), x, y])
                 self.draw_one_city(x, y, TS_GUI.city_start_color if i == 0 else TS_GUI.city_color)
+                pygame.display.flip()
                 i += 1
             elif event.type == KEYDOWN and event.key == K_RETURN:
                 running = False
         return cities
 
     def display(self, problem, max_time=0):
-        old_best_solution = None
+        old_best_solution = problem.best_solution
         running = True
         i = 0
         t0 = 0
         if max_time > 0:
             t0 = clock()
+        print("Generation 0 : " + str(old_best_solution))
+        self.draw_path(old_best_solution, 0)
         while running:
             if i < Problem.MAX_GENERATION_ALLOWED:
                 best_solution = problem.generate()
                 if old_best_solution != best_solution:
                     old_best_solution = best_solution
                     self.draw_path(old_best_solution, i+1)
-                    print("Generation " + str(i + 1) + ":" + str(best_solution))
+                    print("Generation " + str(i + 1) + " : " + str(best_solution))
                 i += 1
             event = pygame.event.wait()
             if event.type == QUIT or (max_time > 0 and int(clock()-t0) >= max_time):
                 running = False
-        return self.return_solution(best_solution)
+        return self.return_solution(problem.best_solution)
 
     def display_text_only(self, problem, max_time=0):
-        old_best_solution = None
+        old_best_solution = problem.best_solution
         t0 = 0
         if max_time > 0:
             t0 = clock()
+        print("Generation 0 : " + str(old_best_solution))
         for i in range(0, Problem.MAX_GENERATION_ALLOWED):
             best_solution = problem.generate()
             if old_best_solution != best_solution:
                 old_best_solution = best_solution
-                print("Generation " + str(i + 1) + ":" + str(best_solution))
+                print("Generation " + str(i + 1) + " : " + str(best_solution))
             if max_time > 0 and int(clock()-t0) >= max_time:
                 break
-        return self.return_solution(best_solution)
+        return self.return_solution(problem.best_solution)
 
     def return_solution(self, solution):
         distance = solution.fitness_score
@@ -422,7 +428,7 @@ def ga_solve(file=None, gui=True, max_time=0):
         return g.display_text_only(problem, max_time)
 
 if __name__ == "__main__":
-    (GUI, MAX_TIME, FILENAME) = (False, 2, 'data/pb010.txt')#get_argv_params()
+    (GUI, MAX_TIME, FILENAME) = (True, 0, 'data/pb050.txt')#get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
     print(ga_solve(FILENAME, GUI, MAX_TIME))
 
