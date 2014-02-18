@@ -236,16 +236,15 @@ class Problem:
             while solution in history:
                 solution = new_population[randint(0, len(new_population)-1)]
             history.append(solution)
-            Problem.mutate(solution)
+            Problem.mutate_swap_town(solution)
 
     @staticmethod
-    def mutate(solution):
-        if random() < Problem.MUTATION_RATE:
-            gene1 = randint(0, len(solution)-1)
-            gene2 = gene1
-            while gene2 == gene1:
-                gene2 = randint(0, len(solution)-1)
-            solution[gene2], solution[gene1] = solution[gene1], solution[gene2]
+    def mutate_swap_town(solution):
+        gene1 = randint(0, len(solution)-1)
+        gene2 = gene1
+        while gene2 == gene1:
+            gene2 = randint(0, len(solution)-1)
+        solution[gene2], solution[gene1] = solution[gene1], solution[gene2]
 
 
 def usage():
