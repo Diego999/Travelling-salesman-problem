@@ -100,14 +100,14 @@ class Problem:
                 self.best_solution = p
 
     def generate(self):
-        self.compute_all_fitness_scores()
-
         new_population = []
         while len(new_population) != Problem.NB_POPULATION:
             Problem.selection_process(self.population, new_population, self.fitness_score_total)
             Problem.crossover_process(self.population, new_population, self.fitness_score_total, self.keys, self.nb_char)
             Problem.mutation_process(new_population)
         self.population = new_population
+
+        self.compute_all_fitness_scores()
 
         return self.best_solution
 
@@ -428,7 +428,7 @@ def ga_solve(file=None, gui=True, max_time=0):
         return g.display_text_only(problem, max_time)
 
 if __name__ == "__main__":
-    (GUI, MAX_TIME, FILENAME) = (True, 0, 'data/pb050.txt')#get_argv_params()
+    (GUI, MAX_TIME, FILENAME) = (False, 0, 'data/pb050.txt')#get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
     print(ga_solve(FILENAME, GUI, MAX_TIME))
 
