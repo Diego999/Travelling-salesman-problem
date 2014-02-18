@@ -150,12 +150,14 @@ class Problem:
 
     @staticmethod
     def select_tournament(population, new_population):
+        """Tournament selection often yields a more diverse population than
+        the fitness proportionate selection (roulette wheel). Machine Learning, P256"""
         for i in range(0, int((1-Problem.CROSSOVER_FRACTION)*Problem.NB_POPULATION)):
             key1 = randint(0, len(population)-1)
             key2 = key1
             while key1 == key2:
                 key2 = randint(0, len(population)-1)
-            solution = Problem.tournament(key1,key2, population)
+            solution = Problem.tournament(key1, key2, population)
             new_population.append(population[solution])
             population[solution], population[-1] = population[-1], population[solution]
             population.pop()
