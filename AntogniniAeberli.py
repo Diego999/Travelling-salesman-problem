@@ -322,7 +322,6 @@ class TS_GUI:
         t0 = 0
         if max_time > 0:
             t0 = clock()
-
         while running:
             if i < Problem.MAX_GENERATION_ALLOWED:
                 best_solution = problem.generate()
@@ -334,6 +333,7 @@ class TS_GUI:
             event = pygame.event.wait()
             if event.type == QUIT or (max_time > 0 and int(clock()-t0) >= max_time):
                 running = False
+        return self.return_solution(best_solution)
 
     def display_text_only(self, problem, max_time=0):
         old_best_solution = None
@@ -347,6 +347,14 @@ class TS_GUI:
                 print("Generation " + str(i + 1) + ":" + str(best_solution))
             if max_time > 0 and int(clock()-t0) >= max_time:
                 break
+        return self.return_solution(best_solution)
+
+    def return_solution(self, solution):
+        distance = solution.fitness_score
+        cities = []
+        for c in range(0, len(solution)):
+            cities.append(self.cities_dict[solution[c]].name)
+        return distance, cities
 
     def quit(self):
         pygame.quit()
@@ -408,14 +416,14 @@ def ga_solve(file=None, gui=True, max_time=0):
     g.cities_dict = problem.cities_dict
 
     if gui:
-        g.display(problem, max_time)
+        return g.display(problem, max_time)
     else:
         pygame.quit()
-        g.display_text_only(problem, max_time)
+        return g.display_text_only(problem, max_time)
 
 if __name__ == "__main__":
-    (GUI, MAX_TIME, FILENAME) = (False, 0, 'data/pb010.txt')#get_argv_params()
+    (GUI, MAX_TIME, FILENAME) = (False, 2, 'data/pb010.txt')#get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
-    ga_solve(FILENAME, GUI, MAX_TIME)
+    print(ga_solve(FILENAME, GUI, MAX_TIME))
 
 
