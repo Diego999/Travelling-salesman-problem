@@ -34,3 +34,13 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+.idea/.name
+
+*.xml
+
+*.iml
+
+GUI_example.py
+
+PVC-tester.py
