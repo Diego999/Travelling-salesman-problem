@@ -20,12 +20,6 @@ from pygame.locals import KEYDOWN, QUIT, MOUSEBUTTONDOWN, K_RETURN, K_ESCAPE
 from math import sqrt
 from random import randint, random, shuffle
 
-screen_x = 500
-screen_y = 500
-city_color = [10, 10, 200]
-city_radius = 3
-font_color = [255, 255, 255]
-
 
 class Town:
     def __init__(self, id, name, x, y):
@@ -89,30 +83,28 @@ class Problem:
             population.append(Solution(current))
         return population
 
-    def generate(self):
+    def initialize(self):
         self.best_solution = Solution([])
         self.best_solution.fitness_score = float('inf')
         self.population = self.create_population(self.keys)
 
-        for i in range(0, Problem.MAX_GENERATION_ALLOWED):
-            fitness_scores_total = 0.0
-            old_best_solution = self.best_solution
+    def generate(self):
+        fitness_scores_total = 0.0
 
-            for p in self.population:
-                p.fitness_score = Problem.fitness_score(p, self.cities_dict)
-                fitness_scores_total += p.fitness_score
-                if p.fitness_score < self.best_solution.fitness_score:
-                    self.best_solution = p
+        for p in self.population:
+            p.fitness_score = Problem.fitness_score(p, self.cities_dict)
+            fitness_scores_total += p.fitness_score
+            if p.fitness_score < self.best_solution.fitness_score:
+                self.best_solution = p
 
-            if old_best_solution != self.best_solution:
-                print('Generation : ', i+1, self.best_solution)
+        new_population = []
+        while len(new_population) != Problem.NB_POPULATION:
+            Problem.selection_process(self.population, new_population, fitness_scores_total)
+            Problem.crossover_process(self.population, new_population, fitness_scores_total, self.keys, self.nb_char)
+            Problem.mutation_process(new_population)
+        self.population = new_population
 
-            new_population = []
-            while len(new_population) != Problem.NB_POPULATION:
-                Problem.selection_process(self.population, new_population, fitness_scores_total)
-                Problem.crossover_process(self.population, new_population, fitness_scores_total, self.keys, self.nb_char)
-                Problem.mutation_process(new_population)
-            self.population = new_population
+        return self.best_solution
 
     @staticmethod
     def fitness_score(solution, cities_dict):
@@ -259,6 +251,47 @@ class Problem:
             gene1 += 1
             gene2 -= 1
 
+
+class TS_GUI:
+
+    screen_x = 500
+    screen_y = 600
+    offset_y = 50
+    offset_y_between_text = 20
+    city_color = [10, 10, 200]
+    city_radius = 3
+    font_color = [255, 255, 255]
+
+    def __init__(self):
+        pygame.init()
+        self.window = pygame.display.set_mode((TS_GUI.screen_x, TS_GUI.screen_y))
+        pygame.display.set_caption('Travelling Salesman Problem - Antognini Aeberli')
+        self.screen = pygame.display.get_surface()
+        self.font = pygame.font.Font(None, 30)
+        pygame.display.flip()
+        self.cities_dict = {}
+
+    def draw_cities(self):
+        self.screen.fill(0)
+        for c in self.cities_dict.values():
+            pygame.draw.circle(self.screen, TS_GUI.city_color, (int(c.x), int(c.y)), TS_GUI.city_radius)
+            text = self.font.render("%i cities" % len(self.cities_dict), True, TS_GUI.font_color)
+            self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y))
+            pygame.display.flip()
+
+    def draw_path(self, solution, nb_generation):
+        self.draw_cities()
+        cities_to_draw = []
+        for c in range(0, len(solution)):
+            town = self.cities_dict[solution[c]]
+            cities_to_draw.append((int(town.x), int(town.y)))
+
+        pygame.draw.lines(self.screen, self.city_color, True, cities_to_draw) # True close the polygon between the first and last point
+        text = self.font.render("Generation %i, Length %s" % (nb_generation, solution.fitness_score), True, TS_GUI.font_color)
+        self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y + TS_GUI.offset_y_between_text))
+        pygame.display.flip()
+
+
 def usage():
     """Prints the module how to usage instructions to the console"
     """
@@ -299,6 +332,7 @@ def get_argv_params():
 
     return gui, max_time, filename
 
+
 def ga_solve(file=None, gui=True, max_time=0):
     cities = []
     if file is None:
@@ -309,8 +343,25 @@ def ga_solve(file=None, gui=True, max_time=0):
         with open(file, 'r+') as f:
             for l in f.readlines():
                 cities.append(l.split())
+    g = TS_GUI()
+
     problem = Problem(cities)
-    problem.generate()
+    g.cities_dict = problem.cities_dict
+    running = True
+    i = 0
+    problem.initialize()
+    old_best_solution = None
+    while running:
+        if i < Problem.MAX_GENERATION_ALLOWED:
+            best_solution = problem.generate()
+            if old_best_solution != best_solution:
+                old_best_solution = best_solution
+                g.draw_path(old_best_solution, i+1)
+                print("Generation " + str(i + 1) + ":" + str(best_solution))
+            i += 1
+        event = pygame.event.wait()
+        if event.type == QUIT:
+            running = False
 
 if __name__ == "__main__":
     (GUI, MAX_TIME, FILENAME) = (False, 0, 'data/pb010.txt')#get_argv_params()
