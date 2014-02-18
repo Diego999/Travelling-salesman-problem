@@ -19,6 +19,7 @@ import pygame
 from pygame.locals import KEYDOWN, QUIT, MOUSEBUTTONDOWN, K_RETURN, K_ESCAPE
 from math import sqrt
 from random import randint, random, shuffle
+from time import clock
 
 
 class Town:
@@ -314,10 +315,14 @@ class TS_GUI:
                 running = False
         return cities
 
-    def display(self, problem):
+    def display(self, problem, max_time=0):
         old_best_solution = None
         running = True
         i = 0
+        t0 = 0
+        if max_time > 0:
+            t0 = clock()
+
         while running:
             if i < Problem.MAX_GENERATION_ALLOWED:
                 best_solution = problem.generate()
@@ -327,16 +332,21 @@ class TS_GUI:
                     print("Generation " + str(i + 1) + ":" + str(best_solution))
                 i += 1
             event = pygame.event.wait()
-            if event.type == QUIT:
+            if event.type == QUIT or (max_time > 0 and int(clock()-t0) >= max_time):
                 running = False
 
-    def display_text_only(self, problem):
+    def display_text_only(self, problem, max_time=0):
         old_best_solution = None
+        t0 = 0
+        if max_time > 0:
+            t0 = clock()
         for i in range(0, Problem.MAX_GENERATION_ALLOWED):
             best_solution = problem.generate()
             if old_best_solution != best_solution:
                 old_best_solution = best_solution
                 print("Generation " + str(i + 1) + ":" + str(best_solution))
+            if max_time > 0 and int(clock()-t0) >= max_time:
+                break
 
     def quit(self):
         pygame.quit()
@@ -401,13 +411,13 @@ def ga_solve(file=None, gui=True, max_time=0):
     g.cities_dict = problem.cities_dict
 
     if gui:
-        g.display(problem)
+        g.display(problem, max_time)
     else:
         pygame.quit()
-        g.display_text_only(problem)
+        g.display_text_only(problem, max_time)
 
 if __name__ == "__main__":
-    (GUI, MAX_TIME, FILENAME) = (False, 0, 'data/pb010.txt')#get_argv_params()
+    (GUI, MAX_TIME, FILENAME) = (True, 0, 'data/pb010.txt')#get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
     ga_solve(FILENAME, GUI, MAX_TIME)
 
