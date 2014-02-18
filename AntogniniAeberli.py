@@ -394,11 +394,9 @@ def get_argv_params():
 
 def ga_solve(file=None, gui=True, max_time=0):
     cities = []
-    g = None
+    g = TS_GUI()
     if file is None:
-        g = TS_GUI()
         cities = g.read_cities()
-        g.quit()
     else:
         with open(file, 'r+') as f:
             for l in f.readlines():
@@ -407,7 +405,6 @@ def ga_solve(file=None, gui=True, max_time=0):
     problem = Problem(cities)
     problem.initialize()
 
-    g = TS_GUI()
     g.cities_dict = problem.cities_dict
 
     if gui:
@@ -417,7 +414,7 @@ def ga_solve(file=None, gui=True, max_time=0):
         g.display_text_only(problem, max_time)
 
 if __name__ == "__main__":
-    (GUI, MAX_TIME, FILENAME) = (True, 0, 'data/pb010.txt')#get_argv_params()
+    (GUI, MAX_TIME, FILENAME) = (False, 0, 'data/pb010.txt')#get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
     ga_solve(FILENAME, GUI, MAX_TIME)
 
