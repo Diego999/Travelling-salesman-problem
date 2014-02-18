@@ -314,6 +314,32 @@ class TS_GUI:
                 running = False
         return cities
 
+    def display(self, problem):
+        old_best_solution = None
+        running = True
+        i = 0
+        while running:
+            if i < Problem.MAX_GENERATION_ALLOWED:
+                best_solution = problem.generate()
+                if old_best_solution != best_solution:
+                    old_best_solution = best_solution
+                    self.draw_path(old_best_solution, i+1)
+                    print("Generation " + str(i + 1) + ":" + str(best_solution))
+                i += 1
+            event = pygame.event.wait()
+            if event.type == QUIT:
+                running = False
+
+    def display_text_only(self, problem):
+        old_best_solution = None
+        for i in range(0, Problem.MAX_GENERATION_ALLOWED):
+            best_solution = problem.generate()
+            if old_best_solution != best_solution:
+                old_best_solution = best_solution
+                print("Generation " + str(i + 1) + ":" + str(best_solution))
+
+    def quit(self):
+        pygame.quit()
 
 def usage():
     """Prints the module how to usage instructions to the console"
@@ -358,34 +384,30 @@ def get_argv_params():
 
 def ga_solve(file=None, gui=True, max_time=0):
     cities = []
-    g = TS_GUI()
+    g = None
     if file is None:
+        g = TS_GUI()
         cities = g.read_cities()
+        g.quit()
     else:
         with open(file, 'r+') as f:
             for l in f.readlines():
                 cities.append(l.split())
 
     problem = Problem(cities)
-    g.cities_dict = problem.cities_dict
-    running = True
-    i = 0
     problem.initialize()
-    old_best_solution = None
-    while running:
-        if i < Problem.MAX_GENERATION_ALLOWED:
-            best_solution = problem.generate()
-            if old_best_solution != best_solution:
-                old_best_solution = best_solution
-                g.draw_path(old_best_solution, i+1)
-                print("Generation " + str(i + 1) + ":" + str(best_solution))
-            i += 1
-        event = pygame.event.wait()
-        if event.type == QUIT:
-            running = False
+
+    g = TS_GUI()
+    g.cities_dict = problem.cities_dict
+
+    if gui:
+        g.display(problem)
+    else:
+        pygame.quit()
+        g.display_text_only(problem)
 
 if __name__ == "__main__":
-    (GUI, MAX_TIME, FILENAME) = (False, 0, None)#'data/pb010.txt')#get_argv_params()
+    (GUI, MAX_TIME, FILENAME) = (False, 0, 'data/pb010.txt')#get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
     ga_solve(FILENAME, GUI, MAX_TIME)
 
