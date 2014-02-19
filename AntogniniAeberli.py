@@ -329,7 +329,7 @@ class TS_GUI:
         print("Generation 0 : " + str(old_best_solution))
         i = 1
         ith_best = 0;
-        while i-ith_best > Problem.DELTA_GENERATION and max_time > 0 and int(clock()-t0) >= max_time:
+        while i-ith_best <= Problem.DELTA_GENERATION and max_time > 0 and int(clock()-t0) >= max_time:
             best_solution = problem.generate()
             if old_best_solution != best_solution:
                 old_best_solution = best_solution
