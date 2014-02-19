@@ -232,42 +232,49 @@ class TS_GUI:
     offset_y_between_text = 20
     city_color = [10, 10, 200]
     city_start_color = [255, 0, 0]
+    city_end_color = [0, 255, 0]
     city_radius = 3
     font_color = [255, 255, 255]
     name_cities = 'v'
+    offset_x_y_city_name = 10
 
-    def __init__(self, gui = True):
+    def __init__(self, gui=True):
         if gui:
             pygame.init()
             self.window = pygame.display.set_mode((TS_GUI.screen_x, TS_GUI.screen_y))
             pygame.display.set_caption('Travelling Salesman Problem - Antognini Aeberli')
             self.screen = pygame.display.get_surface()
-            self.font = pygame.font.Font(None, 30)
+            self.font = pygame.font.Font(None, 18)
+            self.font_city_name = pygame.font.Font(None, 12)
             pygame.display.flip()
             self.cities_dict = {}
 
-    def draw_cities(self):
-        self.screen.fill(0)
-        i = 0
-        for c in self.cities_dict.values():
-            self.draw_one_city(int(c.x), int(c.y), TS_GUI.city_start_color if i == 0 else TS_GUI.city_color)
-            text = self.font.render("%i cities" % len(self.cities_dict), True, TS_GUI.font_color)
-            self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y))
-            i += 1
-
-    def draw_one_city(self, x, y, color):
+    def draw_one_city(self, name, x, y, color):
         pygame.draw.circle(self.screen, color, (int(x), int(y)), TS_GUI.city_radius)
+        text = self.font_city_name.render(name, True, TS_GUI.font_color)
+        self.screen.blit(text, (x-TS_GUI.offset_x_y_city_name, y-TS_GUI.offset_x_y_city_name))
 
     def draw_path(self, solution, nb_generation):
-        self.draw_cities()
+        self.screen.fill(0)
         cities_to_draw = []
         for c in xrange(0, len(solution)):
             town = self.cities_dict[solution[c]]
+            color = TS_GUI.city_color
+            if c == 0:
+                color = TS_GUI.city_start_color
+            elif c == len(solution)-1:
+                color = TS_GUI.city_end_color
+            self.draw_one_city(town.name, town.x, town.y, color)
             cities_to_draw.append((int(town.x), int(town.y)))
 
         pygame.draw.lines(self.screen, self.city_color, True, cities_to_draw) # True close the polygon between the first and last point
+
         text = self.font.render("Generation %i, Length %s" % (nb_generation, solution.distance), True, TS_GUI.font_color)
         self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y + TS_GUI.offset_y_between_text))
+
+        text = self.font.render("%i cities" % len(self.cities_dict), True, TS_GUI.font_color)
+        self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y))
+
         pygame.display.flip()
 
     def read_cities(self):
@@ -279,7 +286,7 @@ class TS_GUI:
             if event.type == MOUSEBUTTONDOWN:
                 x, y = pygame.mouse.get_pos()
                 cities.append([TS_GUI.name_cities + str(i), x, y])
-                self.draw_one_city(x, y, TS_GUI.city_start_color if i == 0 else TS_GUI.city_color)
+                self.draw_one_city(TS_GUI.name_cities + str(i), x, y, TS_GUI.city_color)
                 pygame.display.flip()
                 i += 1
             elif event.type == KEYDOWN and event.key == K_RETURN:
