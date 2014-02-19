@@ -38,11 +38,6 @@ class Solution:
     def __init__(self, chromosome):
         self.chromosome = chromosome
         self.distance = 0
-        self.has_to_be_computed = True
-
-    def set_distance(self, dist):
-        self.distance = dist
-        self.has_to_be_computed = False
 
     def __repr__(self):
         return str(self.distance) + " : " + " ".join(self.chromosome)
@@ -55,21 +50,22 @@ class Solution:
 
     def __setitem__(self, key, value):
         self.chromosome[key] = str(value)
-        self.has_to_be_computed = True
 
     def index(self, value):
         return self.chromosome.index(str(value))
 
 
 class Problem:
-    NB_POPULATION = 500 # ~10x number of cities
+    NB_POPULATION = 1000
+    FACTOR = 10 # ~10x number of cities
     SIZE_TOURNAMENT_BATTLE = 15
     MUTATION_RATE = 0.1
     CROSSOVER_FRACTION = 0.7
-    MAX_GENERATION_ALLOWED = 1000
+    MAX_GENERATION_ALLOWED = 10000
 
     def __init__(self, cities):
         self.cities = []
+        Problem.NB_POPULATION = len(cities)*Problem.FACTOR
         self.cities_dict = {}
         self.nb_char, self.keys = Problem.create_alphabet(cities)
         for c in xrange(0, len(cities)):
@@ -99,10 +95,9 @@ class Problem:
 
     def compute_all_distances(self):
         for p in self.population:
-            if p.has_to_be_computed:
-                Problem.compute_distance(p, self.cities_dict)
-                if p.distance < self.best_solution.distance:
-                    self.best_solution = p
+            Problem.compute_distance(p, self.cities_dict)
+            if p.distance < self.best_solution.distance:
+                self.best_solution = p
 
     def generate(self):
         new_population = []
@@ -120,7 +115,7 @@ class Problem:
         for s in xrange(0, len(solution)-1):
             score += Town.compute_distance(cities_dict[solution[s]], cities_dict[solution[s+1]])
         score += Town.compute_distance(cities_dict[solution[0]], cities_dict[solution[-1]])
-        solution.set_distance(score)
+        solution.distance = score
 
     @staticmethod
     def create_alphabet(cities):
@@ -234,6 +229,7 @@ class TS_GUI:
     city_start_color = [255, 0, 0]
     city_end_color = [0, 255, 0]
     city_radius = 3
+    infobox_color = [128, 128, 128]
     font_color = [255, 255, 255]
     name_cities = 'v'
     offset_x_y_city_name = 10
@@ -272,6 +268,8 @@ class TS_GUI:
 
         pygame.draw.lines(self.screen, self.city_color, True, cities_to_draw) # True close the polygon between the first and last point
 
+        self.draw_infobox()
+
         text = self.font.render("Generation %i, Length %s" % (nb_generation, solution.distance), True, TS_GUI.font_color)
         self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y + TS_GUI.offset_y_between_text))
 
@@ -280,18 +278,27 @@ class TS_GUI:
 
         pygame.display.flip()
 
+    def draw_infobox(self):
+        pygame.draw.rect(self.screen, TS_GUI.infobox_color, (0, TS_GUI.screen_y-TS_GUI.offset_y, TS_GUI.screen_x, TS_GUI.offset_y))
+
     def read_cities(self):
         running = True
         cities = []
         i = 0
+        self.draw_infobox()
+        text = self.font.render("Click with the mouse to create a city. Press Enter to continue.", True, TS_GUI.font_color)
+        self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y + TS_GUI.offset_y_between_text))
+        pygame.display.flip()
+
         while running:
             event = pygame.event.wait()
             if event.type == MOUSEBUTTONDOWN:
                 x, y = pygame.mouse.get_pos()
-                cities.append([TS_GUI.name_cities + str(i), x, y])
-                self.draw_one_city(TS_GUI.name_cities + str(i), x, y, TS_GUI.city_color)
-                pygame.display.flip()
-                i += 1
+                if y <= TS_GUI.screen_y-TS_GUI.offset_y:
+                    cities.append([TS_GUI.name_cities + str(i), x, y])
+                    self.draw_one_city(TS_GUI.name_cities + str(i), x, y, TS_GUI.city_color, TS_GUI.font_color)
+                    pygame.display.flip()
+                    i += 1
             elif event.type == KEYDOWN and event.key == K_RETURN:
                 running = False
         return cities
@@ -408,7 +415,7 @@ def ga_solve(file=None, gui=True, max_time=0):
         return g.display_text_only(problem, max_time)
 
 if __name__ == "__main__":
-    (GUI, MAX_TIME, FILENAME) = (True, 0, 'data/pb050.txt')#get_argv_params()
+    (GUI, MAX_TIME, FILENAME) = (True, 0, None)#'data/pb100.txt')#get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
     print(ga_solve(FILENAME, GUI, MAX_TIME))
 
