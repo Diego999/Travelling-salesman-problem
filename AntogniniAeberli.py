@@ -61,7 +61,7 @@ class Problem:
     SIZE_TOURNAMENT_BATTLE = 15
     MUTATION_RATE = 0.1
     CROSSOVER_FRACTION = 0.7
-    MAX_GENERATION_ALLOWED = 10000
+    DELTA_GENERATION = 50
 
     def __init__(self, cities):
         self.cities = []
@@ -299,22 +299,25 @@ class TS_GUI:
     def display(self, problem, max_time=0):
         old_best_solution = problem.best_solution
         running = True
-        i = 0
+        i = 1
         t0 = 0
         if max_time > 0:
             t0 = clock()
         print("Generation 0 : " + str(old_best_solution))
         self.draw_path(old_best_solution, 0)
+        ith_best = 0
         while running:
-            if i < Problem.MAX_GENERATION_ALLOWED:
-                best_solution = problem.generate()
-                if old_best_solution != best_solution:
-                    old_best_solution = best_solution
-                    self.draw_path(old_best_solution, i+1)
-                    print("Generation " + str(i + 1) + " : " + str(best_solution))
-                i += 1
+            best_solution = problem.generate()
+            if old_best_solution != best_solution:
+                old_best_solution = best_solution
+                self.draw_path(old_best_solution, i)
+                print("Generation " + str(i) + " : " + str(best_solution))
+                
+                ith_best = i
+            i += 1
+            
             event = pygame.event.poll()
-            if event.type == QUIT or (max_time > 0 and int(clock()-t0) >= max_time):
+            if event.type == QUIT or (max_time > 0 and int(clock()-t0) >= max_time) or i-ith_best > Problem.DELTA_GENERATION:
                 running = False
         return self.return_solution(problem.best_solution)
 
@@ -324,13 +327,14 @@ class TS_GUI:
         if max_time > 0:
             t0 = clock()
         print("Generation 0 : " + str(old_best_solution))
-        for i in xrange(0, Problem.MAX_GENERATION_ALLOWED):
+        i = 1
+        ith_best = 0;
+        while i-ith_best > Problem.DELTA_GENERATION and max_time > 0 and int(clock()-t0) >= max_time:
             best_solution = problem.generate()
             if old_best_solution != best_solution:
                 old_best_solution = best_solution
-                print("Generation " + str(i + 1) + " : " + str(best_solution))
-            if max_time > 0 and int(clock()-t0) >= max_time:
-                break
+                ith_best = i
+                print("Generation " + str(i) + " : " + str(best_solution))
         return self.return_solution(problem.best_solution)
 
     def return_solution(self, solution):
