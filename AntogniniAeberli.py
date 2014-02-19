@@ -16,13 +16,15 @@ import sys
 import getopt
 import os
 import pygame
-from pygame.locals import KEYDOWN, QUIT, MOUSEBUTTONDOWN, K_RETURN, K_ESCAPE
-from math import sqrt, pow
-from random import randint, random, shuffle
+from math import sqrt
+from random import randint, shuffle
 from time import clock
 
 
 class Town:
+    """
+    Class which represents a town in the TSP.
+    """
     def __init__(self, id, name, x, y):
         self.id = id
         self.name = name
@@ -35,6 +37,9 @@ class Town:
 
 
 class Solution:
+    """
+    Class which represents a solution in the TSP. Each gene is represented by an unique id, related with the town.
+    """
     def __init__(self, chromosome):
         self.chromosome = chromosome
         self.distance = 0
@@ -56,25 +61,28 @@ class Solution:
 
 
 class Problem:
-    NB_POPULATION = 1000
-    FACTOR = 10 # ~10x number of cities
-    SIZE_TOURNAMENT_BATTLE = 15
-    MUTATION_RATE = 0.1
-    CROSSOVER_FRACTION = 0.7
-    DELTA_GENERATION = 50
+    """
+    Class which represents the entire problem (with no gui) for the TSP.
+    """
+    NB_POPULATION = 1000  # Will be changed during the execution time, by FACTOR*len(cities)
+    FACTOR = 10  # ~10x number of cities
+    SIZE_TOURNAMENT_BATTLE = 15  # Size of the tournament battle with which we keep the best
+    MUTATION_RATE = 0.1  # Probability to mutate
+    CROSSOVER_FRACTION = 0.7  # Number of generated offsprings
+    DELTA_GENERATION = 50  # Convergence criteria. If the best solution hasn't changed since DELTA_GENERATION => STOP
 
     def __init__(self, cities):
-        self.cities = []
         Problem.NB_POPULATION = len(cities)*Problem.FACTOR
+        self.cities = []
         self.cities_dict = {}
         self.keys = Problem.create_alphabet(cities)
+        self.best_solution = ""
+        self.population = []
+
         for c in xrange(0, len(cities)):
             town = Town(self.keys[c], cities[c][0], cities[c][1], cities[c][2])
             self.cities_dict[town.id] = town
             self.cities.append(town)
-
-        self.best_solution = ""
-        self.population = []
 
     @staticmethod
     def create_population(keys):
@@ -127,10 +135,11 @@ class Problem:
             indices = set()
             for j in xrange(0, Problem.SIZE_TOURNAMENT_BATTLE):
                 k = randint(0, len(population)-1)
-                while k in indices:
+                while k in indices:  # We want that indices is composed of unique id
                     k = randint(0, len(population)-1)
                 indices.add(k)
             winner = sorted(indices, key=lambda k: population[k].distance)[0]
+            # Tricks to pass O(n) to O(1) (worst case)
             population[winner], population[-1] = population[-1], population[winner]
             new_population.append(population.pop())
 
@@ -139,13 +148,16 @@ class Problem:
         for i in xrange(0, int(round(Problem.NB_POPULATION*Problem.CROSSOVER_FRACTION)/2)):
             solution1 = new_population[randint(0, len(new_population)-1)]
             solution2 = solution1
-            while solution2 == solution1:
+            while solution2 == solution1: # We want 2 differents solutions
                 solution2 = new_population[randint(0, len(new_population)-1)]
             new_population.append(Problem.crossover(solution1, solution2, keys))
             new_population.append(Problem.crossover(solution2, solution1, keys))
 
     @staticmethod
     def crossover(ga, gb, cities):
+        """
+        Fore more information, refer to "A Fast TSP Solver Using GA For Java"
+        """
         fa, fb = True, True
         n = len(cities)
         town = randint(0, n-1)
@@ -173,7 +185,7 @@ class Problem:
                 x = (x - 1) % n
                 if ga[x] not in g:
                     remaining_towns.append(ga[x])
-            shuffle(remaining_towns)
+            shuffle(remaining_towns)  # Use Fisher-Yates shuffle, O(n). Better than copying and removing
             while len(remaining_towns) != 0:
                 g.append(remaining_towns.pop())
 
@@ -183,7 +195,7 @@ class Problem:
     def mutation_process(new_population):
         nb_mutation = int(round(Problem.MUTATION_RATE*Problem.NB_POPULATION))
         history = []
-        for i in range(0, nb_mutation):
+        for i in xrange(0, nb_mutation):
             solution = new_population[randint(0, len(new_population)-1)]
             while solution in history:
                 solution = new_population[randint(0, len(new_population)-1)]
@@ -213,19 +225,23 @@ class Problem:
 
 
 class TS_GUI:
-
+    """
+    Class attached with Problem to represent the TSP.
+    """
     screen_x = 500
     screen_y = 600
     offset_y = 50
     offset_y_between_text = 20
+    offset_x_y_city_name = 10
+
     city_color = [10, 10, 200]
     city_start_color = [255, 0, 0]
     city_end_color = [0, 255, 0]
     city_radius = 3
+    cities_name = 'v'
+
     infobox_color = [128, 128, 128]
     font_color = [255, 255, 255]
-    name_cities = 'v'
-    offset_x_y_city_name = 10
 
     def __init__(self, gui=True):
         if gui:
@@ -247,19 +263,17 @@ class TS_GUI:
         self.screen.fill(0)
         cities_to_draw = []
         for c in xrange(0, len(solution)):
-            town = self.cities_dict[solution[c]]
-            color = TS_GUI.city_color
-            color_font = TS_GUI.font_color
+            color, color_font = TS_GUI.city_color, TS_GUI.font_color
             if c == 0:
-                color = TS_GUI.city_start_color
-                color_font = TS_GUI.city_start_color
+                color, color_font = TS_GUI.city_start_color, TS_GUI.city_start_color
             elif c == len(solution)-1:
-                color = TS_GUI.city_end_color
-                color_font = TS_GUI.city_end_color
+                color, color_font = TS_GUI.city_end_color, TS_GUI.city_end_color
+
+            town = self.cities_dict[solution[c]]
             self.draw_one_city(town.name, town.x, town.y, color, color_font)
             cities_to_draw.append((int(town.x), int(town.y)))
 
-        pygame.draw.lines(self.screen, self.city_color, True, cities_to_draw) # True close the polygon between the first and last point
+        pygame.draw.lines(self.screen, self.city_color, True, cities_to_draw)  # True close the polygon between the first and last point
 
         self.draw_infobox()
 
@@ -275,66 +289,71 @@ class TS_GUI:
         pygame.draw.rect(self.screen, TS_GUI.infobox_color, (0, TS_GUI.screen_y-TS_GUI.offset_y, TS_GUI.screen_x, TS_GUI.offset_y))
 
     def read_cities(self):
-        running = True
-        cities = []
-        i = 0
         self.draw_infobox()
         text = self.font.render("Click with the mouse to create a city. Press Enter to continue.", True, TS_GUI.font_color)
         self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y + TS_GUI.offset_y_between_text))
         pygame.display.flip()
 
+        running = True
+        cities = []
+        i = 0
         while running:
             event = pygame.event.wait()
-            if event.type == MOUSEBUTTONDOWN:
+            if event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = pygame.mouse.get_pos()
                 if y <= TS_GUI.screen_y-TS_GUI.offset_y:
-                    cities.append([TS_GUI.name_cities + str(i), x, y])
-                    self.draw_one_city(TS_GUI.name_cities + str(i), x, y, TS_GUI.city_color, TS_GUI.font_color)
+                    cities.append([TS_GUI.cities_name + str(i), x, y])
+                    self.draw_one_city(TS_GUI.cities_name + str(i), x, y, TS_GUI.city_color, TS_GUI.font_color)
                     pygame.display.flip()
                     i += 1
-            elif event.type == KEYDOWN and event.key == K_RETURN:
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 running = False
         return cities
 
     def display(self, problem, max_time=0):
         old_best_solution = problem.best_solution
+        print("Generation 0 : " + str(old_best_solution))
+        self.draw_path(old_best_solution, 0)
+
         running = True
         i = 1
         t0 = 0
+        ith_best = 0
+
         if max_time > 0:
             t0 = clock()
-        print("Generation 0 : " + str(old_best_solution))
-        self.draw_path(old_best_solution, 0)
-        ith_best = 0
+
         while running:
             best_solution = problem.generate()
             if old_best_solution != best_solution:
                 old_best_solution = best_solution
                 self.draw_path(old_best_solution, i)
                 print("Generation " + str(i) + " : " + str(best_solution))
-                
                 ith_best = i
             i += 1
             
             event = pygame.event.poll()
-            if event.type == QUIT or (max_time > 0 and int(clock()-t0) >= max_time) or i-ith_best > Problem.DELTA_GENERATION:
+            if event.type == pygame.QUIT or (max_time > 0 and int(clock()-t0) >= max_time) or i-ith_best > Problem.DELTA_GENERATION:
                 running = False
         return self.return_solution(problem.best_solution)
 
     def display_text_only(self, problem, max_time=0):
         old_best_solution = problem.best_solution
+        print("Generation 0 : " + str(old_best_solution))
+
         t0 = 0
+        i = 1
+        ith_best = 0
+
         if max_time > 0:
             t0 = clock()
-        print("Generation 0 : " + str(old_best_solution))
-        i = 1
-        ith_best = 0;
+
         while i-ith_best > Problem.DELTA_GENERATION and max_time > 0 and int(clock()-t0) >= max_time:
             best_solution = problem.generate()
             if old_best_solution != best_solution:
                 old_best_solution = best_solution
-                ith_best = i
                 print("Generation " + str(i) + " : " + str(best_solution))
+                ith_best = i
         return self.return_solution(problem.best_solution)
 
     def return_solution(self, solution):
@@ -346,14 +365,17 @@ class TS_GUI:
     def quit(self):
         pygame.quit()
 
+
 def usage():
-    """Prints the module how to usage instructions to the console"
+    """
+    Prints the module how to usage instructions to the console"
     """
     print(__doc__)
 
 
 def get_argv_params():
-    """Recuperates the arguments from the command line
+    """
+    Recuperates the arguments from the command line
     """
     opts = []
     try:
