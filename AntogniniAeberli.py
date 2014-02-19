@@ -249,9 +249,9 @@ class TS_GUI:
             pygame.display.flip()
             self.cities_dict = {}
 
-    def draw_one_city(self, name, x, y, color):
+    def draw_one_city(self, name, x, y, color, color_font):
         pygame.draw.circle(self.screen, color, (int(x), int(y)), TS_GUI.city_radius)
-        text = self.font_city_name.render(name, True, TS_GUI.font_color)
+        text = self.font_city_name.render(name, True, color_font)
         self.screen.blit(text, (x-TS_GUI.offset_x_y_city_name, y-TS_GUI.offset_x_y_city_name))
 
     def draw_path(self, solution, nb_generation):
@@ -260,11 +260,14 @@ class TS_GUI:
         for c in xrange(0, len(solution)):
             town = self.cities_dict[solution[c]]
             color = TS_GUI.city_color
+            color_font = TS_GUI.font_color
             if c == 0:
                 color = TS_GUI.city_start_color
+                color_font = TS_GUI.city_start_color
             elif c == len(solution)-1:
                 color = TS_GUI.city_end_color
-            self.draw_one_city(town.name, town.x, town.y, color)
+                color_font = TS_GUI.city_end_color
+            self.draw_one_city(town.name, town.x, town.y, color, color_font)
             cities_to_draw.append((int(town.x), int(town.y)))
 
         pygame.draw.lines(self.screen, self.city_color, True, cities_to_draw) # True close the polygon between the first and last point
@@ -405,7 +408,7 @@ def ga_solve(file=None, gui=True, max_time=0):
         return g.display_text_only(problem, max_time)
 
 if __name__ == "__main__":
-    (GUI, MAX_TIME, FILENAME) = (True, 0, None)#'data/pb050.txt')#get_argv_params()
+    (GUI, MAX_TIME, FILENAME) = (True, 0, 'data/pb050.txt')#get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
     print(ga_solve(FILENAME, GUI, MAX_TIME))
 
