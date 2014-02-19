@@ -372,13 +372,11 @@ def get_argv_params():
         elif opt in ("-n", "--no-gui"):
             gui = False
         elif opt in ("-m", "--maxtime"):
-            max_time = arg
+            max_time = int(arg)
             
-    filename = sys.argv[-1]
-    if not os.path.exists(filename) or len(sys.argv) <= 1:
-        usage()
-        print("invalid city file: %s" % filename)
-        exit(2)
+    filename = None
+    if len(sys.argv) > 1 and os.path.exists(sys.argv[-1]):
+        filename = sys.argv[-1];
 
     return gui, max_time, filename
 
@@ -408,7 +406,7 @@ def ga_solve(file=None, gui=True, max_time=0):
         return g.display_text_only(problem, max_time)
 
 if __name__ == "__main__":
-    (GUI, MAX_TIME, FILENAME) = (True, 0, 'data/pb100.txt')#get_argv_params()
+    (GUI, MAX_TIME, FILENAME) = get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
     print(ga_solve(FILENAME, GUI, MAX_TIME))
 
