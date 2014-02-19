@@ -348,12 +348,13 @@ class TS_GUI:
         if max_time > 0:
             t0 = clock()
 
-        while i-ith_best > Problem.DELTA_GENERATION and max_time > 0 and int(clock()-t0) >= max_time:
+        while i-ith_best <= Problem.DELTA_GENERATION and (max_time <= 0 or int(clock()-t0) < max_time):
             best_solution = problem.generate()
             if old_best_solution != best_solution:
                 old_best_solution = best_solution
                 print("Generation " + str(i) + " : " + str(best_solution))
                 ith_best = i
+                i += 1
         return self.return_solution(problem.best_solution)
 
     def return_solution(self, solution):
