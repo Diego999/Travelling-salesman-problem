@@ -40,19 +40,19 @@ class Solution:
         self.distance = 0
 
     def __repr__(self):
-        return str(self.distance) + " : " + " ".join(self.chromosome)
+        return str(self.distance) + " : " + " ".join([str(i) for i in self.chromosome])
 
     def __len__(self):
         return len(self.chromosome)
 
     def __getitem__(self, item):
-        return str(self.chromosome[item])
+        return self.chromosome[item]
 
     def __setitem__(self, key, value):
-        self.chromosome[key] = str(value)
+        self.chromosome[key] = value
 
     def index(self, value):
-        return self.chromosome.index(str(value))
+        return self.chromosome.index(value)
 
 
 class Problem:
@@ -67,7 +67,7 @@ class Problem:
         self.cities = []
         Problem.NB_POPULATION = len(cities)*Problem.FACTOR
         self.cities_dict = {}
-        self.nb_char, self.keys = Problem.create_alphabet(cities)
+        self.keys = Problem.create_alphabet(cities)
         for c in xrange(0, len(cities)):
             town = Town(self.keys[c], cities[c][0], cities[c][1], cities[c][2])
             self.cities_dict[town.id] = town
@@ -102,7 +102,7 @@ class Problem:
     def generate(self):
         new_population = []
         Problem.selection_process(self.population, new_population)
-        Problem.crossover_process(new_population, self.keys, self.nb_char)
+        Problem.crossover_process(new_population, self.keys)
         Problem.mutation_process(new_population)
         self.population = new_population
         self.compute_all_distances()
@@ -119,14 +119,7 @@ class Problem:
 
     @staticmethod
     def create_alphabet(cities):
-        len_cities = len(cities)
-        nb_char = 1
-        while len_cities > 1:
-            len_cities /= 10
-            nb_char += 1
-        nb_char -= 1
-
-        return nb_char, [str(i).zfill(nb_char) for i in xrange(0, len(cities))]
+        return range(0, len(cities))
 
     @staticmethod
     def selection_process(population, new_population):
@@ -137,25 +130,25 @@ class Problem:
                 while k in indices:
                     k = randint(0, len(population)-1)
                 indices.add(k)
-            winner = sorted(indices, key=lambda k:population[k].distance)[0]
+            winner = sorted(indices, key=lambda k: population[k].distance)[0]
             population[winner], population[-1] = population[-1], population[winner]
             new_population.append(population.pop())
 
     @staticmethod
-    def crossover_process(new_population, keys, nb_char):
+    def crossover_process(new_population, keys):
         for i in xrange(0, int(round(Problem.NB_POPULATION*Problem.CROSSOVER_FRACTION)/2)):
             solution1 = new_population[randint(0, len(new_population)-1)]
             solution2 = solution1
             while solution2 == solution1:
                 solution2 = new_population[randint(0, len(new_population)-1)]
-            new_population.append(Problem.crossover(solution1, solution2, keys, nb_char))
-            new_population.append(Problem.crossover(solution2, solution1, keys, nb_char))
+            new_population.append(Problem.crossover(solution1, solution2, keys))
+            new_population.append(Problem.crossover(solution2, solution1, keys))
 
     @staticmethod
-    def crossover(ga, gb, cities, nb_char):
+    def crossover(ga, gb, cities):
         fa, fb = True, True
         n = len(cities)
-        town = str(randint(0, n-1)).zfill(nb_char)
+        town = randint(0, n-1)
         x = ga.index(town)
         y = gb.index(town)
         g = [town]
@@ -188,7 +181,7 @@ class Problem:
 
     @staticmethod
     def mutation_process(new_population):
-        nb_mutation = int(Problem.MUTATION_RATE*Problem.NB_POPULATION)
+        nb_mutation = int(round(Problem.MUTATION_RATE*Problem.NB_POPULATION))
         history = []
         for i in range(0, nb_mutation):
             solution = new_population[randint(0, len(new_population)-1)]
@@ -415,7 +408,7 @@ def ga_solve(file=None, gui=True, max_time=0):
         return g.display_text_only(problem, max_time)
 
 if __name__ == "__main__":
-    (GUI, MAX_TIME, FILENAME) = (True, 0, None)#'data/pb100.txt')#get_argv_params()
+    (GUI, MAX_TIME, FILENAME) = (True, 0, 'data/pb100.txt')#get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
     print(ga_solve(FILENAME, GUI, MAX_TIME))
 
