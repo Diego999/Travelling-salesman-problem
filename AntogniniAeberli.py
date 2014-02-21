@@ -69,9 +69,9 @@ class Problem:
     """
     Class which represents the entire problem (with no gui) for the TSP.
     """
-    NB_POPULATION = 1000  # Will be changed during the execution time, by FACTOR*len(cities)
+    NB_POPULATION = 0  # Will be changed during the execution time, by FACTOR*len(cities)
     FACTOR = 10  # ~10x number of cities
-    SIZE_TOURNAMENT_BATTLE = 15  # Size of the tournament battle with which we keep the best
+    SIZE_TOURNAMENT_BATTLE = 20  # Size of the tournament battle with which we keep the best
     MUTATION_RATE = 0.1  # Probability to mutate
     CROSSOVER_FRACTION = 0.7  # Number of generated offsprings
     DELTA_GENERATION = 50  # Convergence criteria. If the best solution hasn't changed since DELTA_GENERATION => STOP
@@ -150,12 +150,14 @@ class Problem:
 
     @staticmethod
     def crossover_process(new_population, keys):
+        future_solution = []
         for i in xrange(0, int(round(Problem.NB_POPULATION*Problem.CROSSOVER_FRACTION)/2)):
             solution1 = new_population[randint(0, len(new_population)-1)]
             solution2 = solution1
             while solution2 == solution1: # We want 2 differents solutions
                 solution2 = new_population[randint(0, len(new_population)-1)]
-            Problem.run_crossover_2opt(new_population, solution1, solution2, keys)
+            Problem.run_crossover_2opt(future_solution, solution1, solution2, keys)
+        new_population += future_solution
 
     @staticmethod
     def run_crossover_2opt(new_population, solution1, solution2,  keys):
@@ -247,7 +249,7 @@ class Problem:
             while solution in history:
                 solution = new_population[randint(0, len(new_population)-1)]
             history.append(solution)
-            Problem.mutate_swap_town(solution)
+            Problem.mutate_reverse_path(solution)
 
     @staticmethod
     def mutate_swap_town(solution):
@@ -397,8 +399,9 @@ class TS_GUI:
 
         while i-ith_best <= Problem.DELTA_GENERATION and (max_time <= 0 or int(clock()-t0) < max_time):
             best_solution = problem.generate()
-            if old_best_solution != best_solution:
+            if not equal_double(old_best_solution.distance, best_solution.distance):
                 old_best_solution = best_solution
+                self.draw_path(old_best_solution, i)
                 print("Generation " + str(i) + " : " + str(best_solution))
                 ith_best = i
                 i += 1
