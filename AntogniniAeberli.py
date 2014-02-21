@@ -19,6 +19,11 @@ import pygame
 from math import sqrt
 from random import randint, shuffle
 from time import clock
+from copy import deepcopy
+
+
+def equal_double(a, b, epsilon=1e-6):
+    return abs(a-b) < epsilon
 
 
 class Town:
@@ -104,8 +109,8 @@ class Problem:
     def compute_all_distances(self):
         for p in self.population:
             Problem.compute_distance(p, self.cities_dict)
-            if p.distance < self.best_solution.distance:
-                self.best_solution = p
+            if p.distance < self.best_solution.distance and not equal_double(p.distance, self.best_solution.distance):
+                self.best_solution = deepcopy(p)
 
     def generate(self):
         new_population = []
@@ -150,6 +155,7 @@ class Problem:
             solution2 = solution1
             while solution2 == solution1: # We want 2 differents solutions
                 solution2 = new_population[randint(0, len(new_population)-1)]
+
             new_population.append(Problem.crossover(solution1, solution2, keys))
             new_population.append(Problem.crossover(solution2, solution1, keys))
 
@@ -200,7 +206,7 @@ class Problem:
             while solution in history:
                 solution = new_population[randint(0, len(new_population)-1)]
             history.append(solution)
-            Problem.mutate_reverse_path(solution)
+            Problem.mutate_swap_town(solution)
 
     @staticmethod
     def mutate_swap_town(solution):
@@ -325,7 +331,7 @@ class TS_GUI:
 
         while running:
             best_solution = problem.generate()
-            if old_best_solution != best_solution:
+            if not equal_double(old_best_solution.distance, best_solution.distance):
                 old_best_solution = best_solution
                 self.draw_path(old_best_solution, i)
                 print("Generation " + str(i) + " : " + str(best_solution))
@@ -436,5 +442,8 @@ if __name__ == "__main__":
     (GUI, MAX_TIME, FILENAME) = get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
     print(ga_solve(FILENAME, GUI, MAX_TIME))
+    """s = Solution(['A','B','C','D','E','F','G','H'])
+    Problem.crossover_ox(s, ['F','H','A'],2,4)
+    print(s)"""
 
 
