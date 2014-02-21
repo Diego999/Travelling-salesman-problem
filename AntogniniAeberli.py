@@ -156,7 +156,7 @@ class Problem:
             solution2 = solution1
             while solution2 == solution1: # We want 2 differents solutions
                 solution2 = new_population[randint(0, len(new_population)-1)]
-            Problem.run_crossover_2opt(future_solution, solution1, solution2, keys)
+            Problem.run_crossover_2opt(future_solution, solution1, solution2, keys) # You can change with crossover_ox
         new_population += future_solution
 
     @staticmethod
@@ -249,7 +249,7 @@ class Problem:
             while solution in history:
                 solution = new_population[randint(0, len(new_population)-1)]
             history.append(solution)
-            Problem.mutate_reverse_path(solution)
+            Problem.mutate_reverse_path(solution) # you can change with swap town mutation
 
     @staticmethod
     def mutate_swap_town(solution):
@@ -452,7 +452,7 @@ def get_argv_params():
             
     filename = None
     if len(sys.argv) > 1 and os.path.exists(sys.argv[-1]):
-        filename = sys.argv[-1];
+        filename = sys.argv[-1]
 
     return gui, max_time, filename
 
@@ -485,5 +485,3 @@ if __name__ == "__main__":
     (GUI, MAX_TIME, FILENAME) = get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
     print(ga_solve(FILENAME, GUI, MAX_TIME))
-
-
