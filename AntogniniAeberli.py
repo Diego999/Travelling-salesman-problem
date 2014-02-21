@@ -401,7 +401,6 @@ class TS_GUI:
             best_solution = problem.generate()
             if not equal_double(old_best_solution.distance, best_solution.distance):
                 old_best_solution = best_solution
-                self.draw_path(old_best_solution, i)
                 print("Generation " + str(i) + " : " + str(best_solution))
                 ith_best = i
                 i += 1
