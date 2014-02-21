@@ -155,9 +155,50 @@ class Problem:
             solution2 = solution1
             while solution2 == solution1: # We want 2 differents solutions
                 solution2 = new_population[randint(0, len(new_population)-1)]
+            Problem.run_crossover_2opt(new_population, solution1, solution2, keys)
 
-            new_population.append(Problem.crossover(solution1, solution2, keys))
-            new_population.append(Problem.crossover(solution2, solution1, keys))
+    @staticmethod
+    def run_crossover_2opt(new_population, solution1, solution2,  keys):
+        new_population.append(Problem.crossover(solution1, solution2, keys))
+        new_population.append(Problem.crossover(solution2, solution1, keys))
+
+    @staticmethod
+    def run_crossover_ox(new_population, solution1, solution2):
+        gene1 = randint(1, len(solution1)-2)
+        gene2 = gene1
+        while gene2 == gene1:
+            gene2 = randint(1, len(solution1)-2)
+        if gene1 > gene2:
+            gene1, gene2 = gene2, gene1
+        new_population.append(Problem.crossover_ox(solution1, solution2[gene1:gene2+1], gene1, gene2))
+        new_population.append(Problem.crossover_ox(solution2, solution1[gene1:gene2+1], gene1, gene2))
+
+    @staticmethod
+    def crossover_ox(solution_to_copy, cities, p1, p2):
+        solution = deepcopy(solution_to_copy)
+        for c in cities:
+            solution[solution.index(c)] = None
+
+        i = p2
+        while i != p1:
+            if solution[i] is None:
+                j = i + 1
+                while j >= len(solution) - 1 or solution[j] is None:
+                    if j >= len(solution) - 1:
+                        j = 0
+                    else:
+                        j += 1
+                solution[i] = solution[j]
+                solution[j] = None
+            if i >= len(solution) - 1:
+                i = 0
+            else:
+                i += 1
+
+        for c in cities:
+            solution[p1] = c
+            p1 += 1
+        return solution
 
     @staticmethod
     def crossover(ga, gb, cities):
@@ -442,8 +483,5 @@ if __name__ == "__main__":
     (GUI, MAX_TIME, FILENAME) = get_argv_params()
     print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
     print(ga_solve(FILENAME, GUI, MAX_TIME))
-    """s = Solution(['A','B','C','D','E','F','G','H'])
-    Problem.crossover_ox(s, ['F','H','A'],2,4)
-    print(s)"""
 
 
