@@ -11,6 +11,7 @@ params:
 
 (c) 2014 by Diego Antognini and Marco Aeberli")
 """
+from StdSuites.Standard_Suite import ends_with
 
 import sys
 import getopt
@@ -357,7 +358,17 @@ class TS_GUI:
                     i += 1
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 running = False
+            elif event.type == pygame.QUIT:
+                exit(-1)
         return cities
+
+    def wait_to_quit(self, i, best_solution):
+        self.draw_infobox()
+        text = self.font.render(str(len(self.cities_dict)) + " cities, Best : #" + str(i) + " generation, Distance : " + str(best_solution.distance), True, TS_GUI.font_color)
+        self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y))
+        text = self.font.render("Press Enter to quit !", True, TS_GUI.font_color)
+        self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y + TS_GUI.offset_y_between_text))
+        pygame.display.flip()
 
     def display(self, problem, max_time=0):
         old_best_solution = problem.best_solution
@@ -384,6 +395,14 @@ class TS_GUI:
             event = pygame.event.poll()
             if event.type == pygame.QUIT or (max_time > 0 and int(clock()-t0) >= max_time) or i-ith_best > Problem.DELTA_GENERATION:
                 running = False
+
+        self.wait_to_quit(ith_best, old_best_solution)
+        running = True
+        while running:
+            event = pygame.event.wait()
+            if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                running = False
+
         return self.return_solution(problem.best_solution)
 
     def display_text_only(self, problem, max_time=0):
