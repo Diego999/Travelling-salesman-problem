@@ -422,7 +422,7 @@ class TS_GUI:
                 old_best_solution = best_solution
                 print("Generation " + str(i) + " : " + str(best_solution))
                 ith_best = i
-                i += 1
+            i += 1
         return self.return_solution(problem.best_solution)
 
     def return_solution(self, solution):
