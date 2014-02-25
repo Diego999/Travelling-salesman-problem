@@ -4,6 +4,7 @@
 options:
 -h, --help Show this help
 -n, --no-gui
+-v, --verbose
 
 params:
 -m VALUE, --maxtime=VALUE  Max execution time of genetic algorithm.
@@ -462,7 +463,7 @@ class TS_GUI:
         Executes the problem resolving and visualizes the results on the pygame gui.
         """
         old_best_solution = problem.best_solution
-        print("Generation 0 : " + str(old_best_solution))
+        printVerbose("Generation 0 : " + str(old_best_solution))
         self.draw_path(old_best_solution, 0)
 
         running = True
@@ -478,7 +479,7 @@ class TS_GUI:
             if not equal_double(old_best_solution.distance, best_solution.distance):
                 old_best_solution = best_solution
                 self.draw_path(old_best_solution, i)
-                print("Generation " + str(i) + " : " + str(best_solution))
+                printVerbose("Generation " + str(i) + " : " + str(best_solution))
                 ith_best = i
             i += 1
             
@@ -499,7 +500,7 @@ class TS_GUI:
         Executes the problem resolving and displays the results on the command line.
         """
         old_best_solution = problem.best_solution
-        print("Generation 0 : " + str(old_best_solution))
+        printVerbose("Generation 0 : " + str(old_best_solution))
 
         t0 = 0
         i = 1
@@ -513,7 +514,7 @@ class TS_GUI:
             best_solution = problem.generate()
             if not equal_double(old_best_solution.distance, best_solution.distance):
                 old_best_solution = best_solution
-                print("Generation " + str(i) + " : " + str(best_solution))
+                printVerbose("Generation " + str(i) + " : " + str(best_solution))
                 ith_best = i
             i += 1
             
@@ -552,14 +553,15 @@ def get_argv_params():
     try:
         opts = getopt.getopt(
             sys.argv[1:],
-            "hnm:",
-            ["help", "no-gui", "maxtime="])[0]
+            "hnm:v",
+            ["help", "no-gui", "maxtime=", "verbose"])[0]
     except getopt.GetoptError:
         usage()
         print("Wrong options or params.")
         exit(2)
         
     gui = True
+    verbose = False
     max_time = 0
     
     for opt, arg in opts:
@@ -568,6 +570,8 @@ def get_argv_params():
             exit()
         elif opt in ("-n", "--no-gui"):
             gui = False
+        elif opt in ("-v", "--verbose"):
+            verbose = True
         elif opt in ("-m", "--maxtime"):
             max_time = int(arg)
             
@@ -575,7 +579,7 @@ def get_argv_params():
     if len(sys.argv) > 1 and os.path.exists(sys.argv[-1]):
         filename = sys.argv[-1]
 
-    return gui, max_time, filename
+    return gui, max_time, filename, verbose
 
 
 def ga_solve(filename=None, gui=True, max_time=0):
@@ -603,8 +607,17 @@ def ga_solve(filename=None, gui=True, max_time=0):
         return g.display(problem, max_time)
     else:
         return g.display_text_only(problem, max_time)
+        
+def printVerbose(output):
+    if printVerbose.VERBOSE:
+        print(output)
+
+printVerbose.VERBOSE = False
 
 if __name__ == "__main__":
-    (GUI, MAX_TIME, FILENAME) = get_argv_params()
-    print("args gui: %s maxtime: %s filename: %s" % (GUI, MAX_TIME, FILENAME))
-    print(ga_solve(FILENAME, GUI, MAX_TIME))
+    (GUI, MAX_TIME, FILENAME, VERBOSE) = get_argv_params()
+    print("arguments( gui: %s maxtime: %s filename: %s verbose: %s )" % (GUI, MAX_TIME, FILENAME, VERBOSE))
+    printVerbose.VERBOSE = VERBOSE
+    results = ga_solve(FILENAME, GUI, MAX_TIME)
+    print("distance: %s" % results[0])
+    print("cities:   %s" % results[1])
