@@ -11,7 +11,6 @@ params:
 
 (c) 2014 by Diego Antognini and Marco Aeberli")
 """
-from StdSuites.Standard_Suite import ends_with
 
 import sys
 import getopt
@@ -39,6 +38,9 @@ class Town:
 
     @staticmethod
     def compute_distance(t1, t2):
+        """
+        Computes the Euclidean distance between two towns.
+        """
         return sqrt((t1.x-t2.x)**2 + (t1.y-t2.y)**2)
 
 
@@ -68,10 +70,10 @@ class Solution:
 
 class Problem:
     """
-    Class which represents the entire problem (with no gui) for the TSP.
+    Class which represents the entire problem (without gui) for the TSP.
     """
     NB_POPULATION = 0  # Will be changed during the execution time, by FACTOR*len(cities)
-    FACTOR = 10  # ~10x number of cities
+    FACTOR = 10  # ~10 x number of cities
     SIZE_TOURNAMENT_BATTLE = 20  # Size of the tournament battle with which we keep the best
     MUTATION_RATE = 0.1  # Probability to mutate
     CROSSOVER_FRACTION = 0.7  # Number of generated offsprings
@@ -108,6 +110,10 @@ class Problem:
         self.compute_all_distances()
 
     def compute_all_distances(self):
+        """
+        Computes the distances for all the solutions availlable in the population.
+        Determines also the best_solution in the population.
+        """
         for p in self.population:
             Problem.compute_distance(p, self.cities_dict)
             if p.distance < self.best_solution.distance and not equal_double(p.distance, self.best_solution.distance):
@@ -125,14 +131,23 @@ class Problem:
 
     @staticmethod
     def compute_distance(solution, cities_dict):
+        """
+        Computes for the traveling distance for one soltution.
+        """
         score = 0.0
         for s in xrange(0, len(solution)-1):
             score += Town.compute_distance(cities_dict[solution[s]], cities_dict[solution[s+1]])
+            
+        # do not forget to compute the distance between the first and the last city.
         score += Town.compute_distance(cities_dict[solution[0]], cities_dict[solution[-1]])
+        
         solution.distance = score
 
     @staticmethod
     def create_alphabet(cities):
+        """
+        Determines the complete alphabet necessary to resolve the problem and returns it as list.
+        """
         return range(0, len(cities))
 
     @staticmethod
@@ -145,12 +160,17 @@ class Problem:
                     k = randint(0, len(population)-1)
                 indices.add(k)
             winner = sorted(indices, key=lambda k: population[k].distance)[0]
-            # Tricks to pass O(n) to O(1) (worst case)
+            
+            # Remove the best from the old popultion and append it to the new population
+            # (Tricks to pass from O(n) to O(1) (worst case) )
             population[winner], population[-1] = population[-1], population[winner]
             new_population.append(population.pop())
 
     @staticmethod
     def crossover_process(new_population, keys):
+        """
+        Does the crossover of two random solutions
+        """
         future_solution = []
         for i in xrange(0, int(round(Problem.NB_POPULATION*Problem.CROSSOVER_FRACTION)/2)):
             solution1 = new_population[randint(0, len(new_population)-1)]
@@ -243,17 +263,31 @@ class Problem:
 
     @staticmethod
     def mutation_process(new_population):
+        """
+        Mutates some of the solutions in the new_population passed as argument.
+        """ 
         nb_mutation = int(round(Problem.MUTATION_RATE*Problem.NB_POPULATION))
         history = []
         for i in xrange(0, nb_mutation):
+            # select a solution from the new_population
+            # (can not be already mutated, so verify if in history)
             solution = new_population[randint(0, len(new_population)-1)]
             while solution in history:
                 solution = new_population[randint(0, len(new_population)-1)]
+            
+            # append the selected solution, to don't select a second time the same solution
             history.append(solution)
+            
+            # mutate the selected solution
             Problem.mutate_reverse_path(solution) # you can change with swap town mutation
 
     @staticmethod
     def mutate_swap_town(solution):
+        """
+        Mutation of a town, where two towns are inversed
+        i.e.: [0,1,2,3,4,5,6,7,8,9,10,11]  --> select random 5 and 8
+              [0,1,2,3,4,8,6,7,5,9,10,11]
+        """
         gene1 = randint(0, len(solution)-1)
         gene2 = gene1
         while gene2 == gene1:
@@ -262,6 +296,11 @@ class Problem:
 
     @staticmethod
     def mutate_reverse_path(solution):
+        """
+        Mutation of a solution where the path between two genes are inversed.
+        i.e.: [0,1,2,3,4,5,6,7,8,9,10,11]  --> select random 5 and 8
+              [0,1,2,3,4,8,7,6,5,9,10,11]
+        """
         gene1 = randint(0, len(solution)-1)
         gene2 = gene1
         while gene2 == gene1:
@@ -305,11 +344,17 @@ class TS_GUI:
             self.cities_dict = {}
 
     def draw_one_city(self, name, x, y, color, color_font):
+        """
+        Draws one city to the pygame gui screen.
+        """
         pygame.draw.circle(self.screen, color, (int(x), int(y)), TS_GUI.city_radius)
         text = self.font_city_name.render(name, True, color_font)
         self.screen.blit(text, (x-TS_GUI.offset_x_y_city_name, y-TS_GUI.offset_x_y_city_name))
 
     def draw_path(self, solution, nb_generation):
+        """
+        Draws the path (between cities) of a solution and the appropriate informations to the pygame gui screen.
+        """
         self.screen.fill(0)
         cities_to_draw = []
         for c in xrange(0, len(solution)):
@@ -336,9 +381,16 @@ class TS_GUI:
         pygame.display.flip()
 
     def draw_infobox(self):
+        """
+        Draws the base style of the infobox at the bottom of the gui.
+        """
         pygame.draw.rect(self.screen, TS_GUI.infobox_color, (0, TS_GUI.screen_y-TS_GUI.offset_y, TS_GUI.screen_x, TS_GUI.offset_y))
 
     def read_cities(self):
+        """
+        Proposes a gui for entering cities on a 500x500 sized map and returns the entered cities.
+        Returns a list with [NAME, POS_X, POS_X] where the names are auto generated.
+        """
         self.draw_infobox()
         text = self.font.render("Click with the mouse to create a city. Press Enter to continue.", True, TS_GUI.font_color)
         self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y + TS_GUI.offset_y_between_text))
@@ -363,14 +415,27 @@ class TS_GUI:
         return cities
 
     def wait_to_quit(self, i, best_solution):
+        """
+        Proposes a gui showing the best_solution to the user and waits for its confirmation to quit.
+        """
         self.draw_infobox()
         text = self.font.render(str(len(self.cities_dict)) + " cities, Best : #" + str(i) + " generation, Distance : " + str(best_solution.distance), True, TS_GUI.font_color)
         self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y))
         text = self.font.render("Press Enter to quit !", True, TS_GUI.font_color)
         self.screen.blit(text, (0, TS_GUI.screen_y - TS_GUI.offset_y + TS_GUI.offset_y_between_text))
         pygame.display.flip()
+        
+        # wait until the user closes the window or presses the return key.
+        running = True
+        while running:
+            event = pygame.event.wait()
+            if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                running = False
 
     def display(self, problem, max_time=0):
+        """
+        Executes the problem resolving and visualizes the results on the pygame gui.
+        """
         old_best_solution = problem.best_solution
         print("Generation 0 : " + str(old_best_solution))
         self.draw_path(old_best_solution, 0)
@@ -393,19 +458,21 @@ class TS_GUI:
             i += 1
             
             event = pygame.event.poll()
+            
+            # Verify if the user has request to quit the gui, or the maximum time has passed, or if the problem has converged.
             if event.type == pygame.QUIT or (max_time > 0 and int(clock()-t0) >= max_time) or i-ith_best > Problem.DELTA_GENERATION:
+                # Quit the loop if so.
                 running = False
 
         self.wait_to_quit(ith_best, old_best_solution)
-        running = True
-        while running:
-            event = pygame.event.wait()
-            if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                running = False
 
+        # prepare the solution and return it
         return self.return_solution(problem.best_solution)
 
     def display_text_only(self, problem, max_time=0):
+        """
+        Executes the problem resolving and displays the results on the command line.
+        """
         old_best_solution = problem.best_solution
         print("Generation 0 : " + str(old_best_solution))
 
@@ -415,7 +482,8 @@ class TS_GUI:
 
         if max_time > 0:
             t0 = clock()
-
+        
+        # Until no convergence appears or the maximum processing time reached, generate new solutions and keep the best.
         while i-ith_best <= Problem.DELTA_GENERATION and (max_time <= 0 or int(clock()-t0) < max_time):
             best_solution = problem.generate()
             if not equal_double(old_best_solution.distance, best_solution.distance):
@@ -423,15 +491,24 @@ class TS_GUI:
                 print("Generation " + str(i) + " : " + str(best_solution))
                 ith_best = i
             i += 1
+            
+        # prepare the best solution for returning.
         return self.return_solution(problem.best_solution)
 
     def return_solution(self, solution):
+        """
+        Creates the by the laboratory requested solution format and returns it..
+        Returns the solution in format  (distance, list(cities))
+        """
         cities = []
         for c in xrange(0, len(solution)):
             cities.append(self.cities_dict[solution[c]].name)
         return solution.distance, cities
 
     def quit(self):
+        """
+        Closes and exits pygame.
+        """
         pygame.quit()
 
 
@@ -482,6 +559,8 @@ def ga_solve(file=None, gui=True, max_time=0):
     if file is None:
         g = TS_GUI()
         cities = g.read_cities()
+        
+        # quit the gui here, when no gui to show the progress is necessary in future.
         if not gui:
             pygame.quit()
     else:
