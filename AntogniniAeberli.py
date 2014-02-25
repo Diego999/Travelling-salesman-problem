@@ -23,6 +23,10 @@ from copy import deepcopy
 
 
 def equal_double(a, b, epsilon=1e-6):
+    """
+    Returns true if a and b are equal, with epsilon as accepted range.
+    False if not.
+    """
     return abs(a-b) < epsilon
 
 
@@ -80,6 +84,10 @@ class Problem:
     DELTA_GENERATION = 50  # Convergence criteria. If the best solution hasn't changed since DELTA_GENERATION => STOP
 
     def __init__(self, cities):
+        """
+        Initializes a problem, based on the cities passed as argument.
+        The cities are expected in format [[name, pos_x, pos_y], ...]
+        """
         Problem.NB_POPULATION = len(cities)*Problem.FACTOR
         self.cities = []
         self.cities_dict = {}
@@ -94,6 +102,10 @@ class Problem:
 
     @staticmethod
     def create_population(keys):
+        """
+        Creates a population based on the keys passed as argument.
+        Returns the population.
+        """
         population = []
         for i in xrange(0, Problem.NB_POPULATION):
             current = []
@@ -104,6 +116,9 @@ class Problem:
         return population
 
     def initialize(self):
+        """
+        Preparation for the execution of the algorithm.
+        """
         self.best_solution = Solution([])
         self.best_solution.distance = float('inf')
         self.population = self.create_population(self.keys)
@@ -120,6 +135,10 @@ class Problem:
                 self.best_solution = deepcopy(p)
 
     def generate(self):
+        """
+        Runs all the steps for the generation of a "good" solution.
+        Returns the best solution obtained during the generation.
+        """
         new_population = []
         Problem.selection_process(self.population, new_population)
         Problem.crossover_process(new_population, self.keys)
@@ -152,6 +171,9 @@ class Problem:
 
     @staticmethod
     def selection_process(population, new_population):
+        """
+        Runs the tournament with a specified size (defined as static).
+        """
         for i in xrange(0, int(round((1-Problem.CROSSOVER_FRACTION)*Problem.NB_POPULATION))):
             indices = set()
             for j in xrange(0, Problem.SIZE_TOURNAMENT_BATTLE):
@@ -182,11 +204,52 @@ class Problem:
 
     @staticmethod
     def run_crossover_2opt(new_population, solution1, solution2,  keys):
-        new_population.append(Problem.crossover(solution1, solution2, keys))
-        new_population.append(Problem.crossover(solution2, solution1, keys))
+        """
+        Fore more information, refer to "A Fast TSP Solver Using GA For Java"
+        """
+        new_population.append(Problem.crossover_2opt(solution1, solution2, keys))
+        new_population.append(Problem.crossover_2opt(solution2, solution1, keys))
+    
+    @staticmethod
+    def crossover_2opt(ga, gb, cities):
+        fa, fb = True, True
+        n = len(cities)
+        town = randint(0, n-1)
+        x = ga.index(town)
+        y = gb.index(town)
+        g = [town]
+
+        while fa or fb:
+            x = (x - 1) % n
+            y = (y + 1) % n
+            if fa:
+                if ga[x] not in g:
+                    g.insert(0, ga[x])
+                else:
+                    fa = False
+            if fb:
+                if gb[y] not in g:
+                    g.append(gb[y])
+                else:
+                    fb = False
+
+        remaining_towns = []
+        if len(g) < len(ga):
+            while len(g)+len(remaining_towns) != n:
+                x = (x - 1) % n
+                if ga[x] not in g:
+                    remaining_towns.append(ga[x])
+            shuffle(remaining_towns)  # Use Fisher-Yates shuffle, O(n). Better than copying and removing
+            while len(remaining_towns) != 0:
+                g.append(remaining_towns.pop())
+
+        return Solution(g)
 
     @staticmethod
     def run_crossover_ox(new_population, solution1, solution2):
+        """
+        Crossover implementation based on the publication "Algorithm genetiques" from Selvaraj Ramkumar
+        """
         gene1 = randint(1, len(solution1)-2)
         gene2 = gene1
         while gene2 == gene1:
@@ -222,44 +285,6 @@ class Problem:
             solution[p1] = c
             p1 += 1
         return solution
-
-    @staticmethod
-    def crossover(ga, gb, cities):
-        """
-        Fore more information, refer to "A Fast TSP Solver Using GA For Java"
-        """
-        fa, fb = True, True
-        n = len(cities)
-        town = randint(0, n-1)
-        x = ga.index(town)
-        y = gb.index(town)
-        g = [town]
-
-        while fa or fb:
-            x = (x - 1) % n
-            y = (y + 1) % n
-            if fa:
-                if ga[x] not in g:
-                    g.insert(0, ga[x])
-                else:
-                    fa = False
-            if fb:
-                if gb[y] not in g:
-                    g.append(gb[y])
-                else:
-                    fb = False
-
-        remaining_towns = []
-        if len(g) < len(ga):
-            while len(g)+len(remaining_towns) != n:
-                x = (x - 1) % n
-                if ga[x] not in g:
-                    remaining_towns.append(ga[x])
-            shuffle(remaining_towns)  # Use Fisher-Yates shuffle, O(n). Better than copying and removing
-            while len(remaining_towns) != 0:
-                g.append(remaining_towns.pop())
-
-        return Solution(g)
 
     @staticmethod
     def mutation_process(new_population):
