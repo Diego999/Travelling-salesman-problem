@@ -80,7 +80,7 @@ class Problem:
     NB_POPULATION = 0  # Will be changed during the execution time, by FACTOR*len(cities)
     FACTOR = 10  # ~10 x number of cities
     SIZE_TOURNAMENT_BATTLE = 20  # Size of the tournament battle with which we keep the best
-    MUTATION_RATE = 0.1  # Probability to mutate
+    MUTATION_RATE = 0.2  # Probability to mutate
     CROSSOVER_FRACTION = 0.7  # Number of generated offsprings
     DELTA_GENERATION = 50  # Convergence criteria. If the best solution hasn't changed since DELTA_GENERATION => STOP
 
