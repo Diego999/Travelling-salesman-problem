@@ -17,7 +17,7 @@ import sys
 import getopt
 import os
 import pygame
-from math import sqrt
+from math import hypot
 from random import randint, shuffle
 from time import clock
 from copy import deepcopy
@@ -35,6 +35,9 @@ class Town:
     """
     Class which represents a town in the TSP.
     """
+
+    PRECALCULATE_LIST = []
+
     def __init__(self, id, name, x, y):
         self.id = id
         self.name = name
@@ -46,7 +49,20 @@ class Town:
         """
         Computes the Euclidean distance between two towns.
         """
-        return sqrt((t1.x-t2.x)**2 + (t1.y-t2.y)**2)
+        return Town.PRECALCULATE_LIST[t1][t2]
+
+    @staticmethod
+    def compute_all_possible_distance(cities):
+        for k1 in range(0, len(cities)):
+            Town.PRECALCULATE_LIST.append(list())
+            for k2 in range(0, len(cities)):
+                Town.PRECALCULATE_LIST[k1].append(0)
+
+        for k1 in range(0, len(cities)):
+            for k2 in range(k1, len(cities)):
+                c1 = cities[k1].id
+                c2 = cities[k2].id
+                Town.PRECALCULATE_LIST[c1][c2] = Town.PRECALCULATE_LIST[c2][c1] = hypot(cities[k1].x-cities[k2].x, cities[k1].y-cities[k2].y)
 
 
 class Solution:
@@ -123,6 +139,7 @@ class Problem:
         self.best_solution = Solution([])
         self.best_solution.distance = float('inf')
         self.population = self.create_population(self.keys)
+        Town.compute_all_possible_distance(self.cities)
         self.compute_all_distances()
 
     def compute_all_distances(self):
@@ -156,10 +173,10 @@ class Problem:
         """
         score = 0.0
         for s in xrange(0, len(solution)-1):
-            score += Town.compute_distance(cities_dict[solution[s]], cities_dict[solution[s+1]])
+            score += Town.compute_distance(solution[s], solution[s+1])
             
         # do not forget to compute the distance between the first and the last city.
-        score += Town.compute_distance(cities_dict[solution[0]], cities_dict[solution[-1]])
+        score += Town.compute_distance(solution[0], solution[-1])
         
         solution.distance = score
 
@@ -517,7 +534,7 @@ class TS_GUI:
                 printVerbose("Generation " + str(i) + " : " + str(best_solution))
                 ith_best = i
             i += 1
-            
+
         # prepare the best solution for returning.
         return self.return_solution(problem.best_solution)
 
