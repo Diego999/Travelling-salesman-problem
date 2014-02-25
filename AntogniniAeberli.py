@@ -578,10 +578,10 @@ def get_argv_params():
     return gui, max_time, filename
 
 
-def ga_solve(file=None, gui=True, max_time=0):
+def ga_solve(filename=None, gui=True, max_time=0):
     cities = []
     g = None
-    if file is None:
+    if filename is None:
         g = TS_GUI()
         cities = g.read_cities()
         
@@ -589,7 +589,7 @@ def ga_solve(file=None, gui=True, max_time=0):
         if not gui:
             pygame.quit()
     else:
-        with open(file, 'r+') as f:
+        with open(filename, 'r+') as f:
             for l in f.readlines():
                 cities.append(l.split())
 
