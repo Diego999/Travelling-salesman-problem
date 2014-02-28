@@ -18,7 +18,7 @@ import getopt
 import os
 import pygame
 from math import hypot
-from random import randint, shuffle
+from random import randint, shuffle, sample, choice
 from time import clock
 from copy import deepcopy
 
@@ -88,16 +88,44 @@ class Solution:
     def index(self, value):
         return self.chromosome.index(value)
 
+    def compute_distance(self):
+        """
+        Computes for the traveling distance for one soltution.
+        """
+        self.distance = 0.0
+        for s in xrange(0, len(self.chromosome)-1):
+            self.distance += Town.compute_distance(self.chromosome[s], self.chromosome[s+1])
+
+        # do not forget to compute the distance between the first and the last city.
+        self.distance += Town.compute_distance(self.chromosome[0], self.chromosome[-1])
+
+    def mutate(self):
+        """
+        Mutation of a solution where the path between two genes are inversed.
+        i.e.: [0,1,2,3,4,5,6,7,8,9,10,11]  --> select random 5 and 8
+              [0,1,2,3,4,8,7,6,5,9,10,11]
+        """
+        gene1 = randint(0, len(self.chromosome)-1)
+        gene2 = gene1
+        while gene2 == gene1:
+            gene2 = randint(0, len(self.chromosome)-1)
+        if gene1 > gene2:
+            gene1, gene2 = gene2, gene1
+        while gene1 < gene2:
+            self.chromosome[gene1], self.chromosome[gene2] = self.chromosome[gene2], self.chromosome[gene1]
+            gene1 += 1
+            gene2 -= 1
+
 
 class Problem:
     """
     Class which represents the entire problem (without gui) for the TSP.
     """
     NB_POPULATION = 0  # Will be changed during the execution time, by FACTOR*len(cities)
-    FACTOR = 10  # ~10 x number of cities
-    SIZE_TOURNAMENT_BATTLE = 20  # Size of the tournament battle with which we keep the best
-    MUTATION_RATE = 0.2  # Probability to mutate
-    CROSSOVER_FRACTION = 0.7  # Number of generated offsprings
+    FACTOR = 1
+    SIZE_TOURNAMENT_BATTLE = 10  # Size of the tournament battle with which we keep the best
+    MUTATION_RATE = 0.3  # Probability to mutate
+    CROSSOVER_FRACTION = 0.8  # Number of generated offsprings
     DELTA_GENERATION = 50  # Convergence criteria. If the best solution hasn't changed since DELTA_GENERATION => STOP
 
     def __init__(self, cities):
@@ -106,31 +134,26 @@ class Problem:
         The cities are expected in format [[name, pos_x, pos_y], ...]
         """
         Problem.NB_POPULATION = len(cities)*Problem.FACTOR
-        self.cities = []
         self.cities_dict = {}
-        self.keys = Problem.create_alphabet(cities)
-        self.best_solution = ""
+        self.keys = range(0, len(cities))
+        self.best_solution = None
         self.population = []
 
+        cities_id = []
         for c in xrange(0, len(cities)):
             town = Town(self.keys[c], cities[c][0], cities[c][1], cities[c][2])
             self.cities_dict[town.id] = town
-            self.cities.append(town)
+            cities_id.append(town)
+        Town.compute_all_possible_distance(cities_id)
 
-    @staticmethod
-    def create_population(keys):
+    def create_population(self):
         """
         Creates a population based on the keys passed as argument.
         Returns the population.
         """
-        population = []
         for i in xrange(0, Problem.NB_POPULATION):
-            current = []
-            shuffle(keys)  # Use Fisher-Yates shuffle, O(n). Better than copying and removing
-            for k in keys:
-                current.append(k)
-            population.append(Solution(current))
-        return population
+            shuffle(self.keys)  # Use Fisher-Yates shuffle, O(n). Better than copying and removing
+            self.population.append(Solution(self.keys[:]))
 
     def initialize(self):
         """
@@ -138,8 +161,7 @@ class Problem:
         """
         self.best_solution = Solution([])
         self.best_solution.distance = float('inf')
-        self.population = self.create_population(self.keys)
-        Town.compute_all_possible_distance(self.cities)
+        self.create_population()
         self.compute_all_distances()
 
     def compute_all_distances(self):
@@ -148,7 +170,7 @@ class Problem:
         Determines also the best_solution in the population.
         """
         for p in self.population:
-            Problem.compute_distance(p, self.cities_dict)
+            p.compute_distance()
             if p.distance < self.best_solution.distance and not equal_double(p.distance, self.best_solution.distance):
                 self.best_solution = deepcopy(p)
 
@@ -157,82 +179,54 @@ class Problem:
         Runs all the steps for the generation of a "good" solution.
         Returns the best solution obtained during the generation.
         """
-        new_population = []
-        Problem.selection_process(self.population, new_population)
-        Problem.crossover_process(new_population, self.keys)
-        Problem.mutation_process(new_population)
+        new_population = self.selection_process()
+        new_population += self.crossover_process(new_population)
+        self.mutation_process(new_population)
+
         self.population = new_population
         self.compute_all_distances()
 
+        # If we don't have enough town to realize a crossover (eg 5)
+        if len(self.population) > Problem.NB_POPULATION:
+            self.population.sort(key=lambda p:p.distance)
+            self.population = self.population[:Problem.NB_POPULATION]
         return self.best_solution
 
-    @staticmethod
-    def compute_distance(solution, cities_dict):
-        """
-        Computes for the traveling distance for one soltution.
-        """
-        score = 0.0
-        for s in xrange(0, len(solution)-1):
-            score += Town.compute_distance(solution[s], solution[s+1])
-            
-        # do not forget to compute the distance between the first and the last city.
-        score += Town.compute_distance(solution[0], solution[-1])
-        
-        solution.distance = score
-
-    @staticmethod
-    def create_alphabet(cities):
-        """
-        Determines the complete alphabet necessary to resolve the problem and returns it as list.
-        """
-        return range(0, len(cities))
-
-    @staticmethod
-    def selection_process(population, new_population):
+    def selection_process(self):
         """
         Runs the tournament with a specified size (defined as static).
         """
-        for i in xrange(0, int(round((1-Problem.CROSSOVER_FRACTION)*Problem.NB_POPULATION))):
-            indices = set()
-            for j in xrange(0, Problem.SIZE_TOURNAMENT_BATTLE):
-                k = randint(0, len(population)-1)
-                while k in indices:  # We want that indices is composed of unique id
-                    k = randint(0, len(population)-1)
-                indices.add(k)
-            winner = sorted(indices, key=lambda k: population[k].distance)[0]
-            
-            # Remove the best from the old popultion and append it to the new population
-            # (Tricks to pass from O(n) to O(1) (worst case) )
-            population[winner], population[-1] = population[-1], population[winner]
-            new_population.append(population.pop())
+        new_population = []
+        # If the number of cities is to small, we return the entire population and we'll cut it later
+        if self.SIZE_TOURNAMENT_BATTLE >= len(self.population):
+            return self.population
+        else:
+            for i in xrange(0, int(round((1-Problem.CROSSOVER_FRACTION)*Problem.NB_POPULATION))):
+                solutions = sample(self.population, self.SIZE_TOURNAMENT_BATTLE)
+                solutions.sort(key=lambda p: p.distance)
+                self.population.remove(solutions[0]) # O(n) but if we want, we could do the tricks with swaping with the last element and then pop it. But the population is really small so not necessary
+                new_population.append(solutions[0])
+        return new_population
 
-    @staticmethod
-    def crossover_process(new_population, keys):
+    def crossover_process(self, new_population):
         """
         Does the crossover of two random solutions
         """
         future_solution = []
         for i in xrange(0, int(round(Problem.NB_POPULATION*Problem.CROSSOVER_FRACTION)/2)):
-            solution1 = new_population[randint(0, len(new_population)-1)]
+            solution1 = choice(new_population)
             solution2 = solution1
-            while solution2 == solution1: # We want 2 differents solutions
-                solution2 = new_population[randint(0, len(new_population)-1)]
-            Problem.run_crossover_2opt(future_solution, solution1, solution2, keys) # You can change with crossover_ox
-        new_population += future_solution
+            while solution2 == solution1:
+                solution2 = choice(new_population)
 
-    @staticmethod
-    def run_crossover_2opt(new_population, solution1, solution2,  keys):
-        """
-        Fore more information, refer to "A Fast TSP Solver Using GA For Java"
-        """
-        new_population.append(Problem.crossover_2opt(solution1, solution2, keys))
-        new_population.append(Problem.crossover_2opt(solution2, solution1, keys))
-    
-    @staticmethod
-    def crossover_2opt(ga, gb, cities):
+            future_solution.append(self.crossover(solution1, solution2))
+            future_solution.append(self.crossover(solution2, solution1))
+        return future_solution
+
+    def crossover(self, ga, gb):
         fa, fb = True, True
-        n = len(cities)
-        town = randint(0, n-1)
+        n = len(ga)
+        town = choice(ga.chromosome)
         x = ga.index(town)
         y = gb.index(town)
         g = [town]
@@ -258,103 +252,17 @@ class Problem:
                 if ga[x] not in g:
                     remaining_towns.append(ga[x])
             shuffle(remaining_towns)  # Use Fisher-Yates shuffle, O(n). Better than copying and removing
-            while len(remaining_towns) != 0:
+            while len(remaining_towns) > 0:
                 g.append(remaining_towns.pop())
 
         return Solution(g)
 
-    @staticmethod
-    def run_crossover_ox(new_population, solution1, solution2):
-        """
-        Crossover implementation based on the publication "Algorithm genetiques" from Selvaraj Ramkumar
-        """
-        gene1 = randint(1, len(solution1)-2)
-        gene2 = gene1
-        while gene2 == gene1:
-            gene2 = randint(1, len(solution1)-2)
-        if gene1 > gene2:
-            gene1, gene2 = gene2, gene1
-        new_population.append(Problem.crossover_ox(solution1, solution2[gene1:gene2+1], gene1, gene2))
-        new_population.append(Problem.crossover_ox(solution2, solution1[gene1:gene2+1], gene1, gene2))
-
-    @staticmethod
-    def crossover_ox(solution_to_copy, cities, p1, p2):
-        solution = deepcopy(solution_to_copy)
-        for c in cities:
-            solution[solution.index(c)] = None
-
-        i = p2
-        while i != p1:
-            if solution[i] is None:
-                j = i + 1
-                while j >= len(solution) - 1 or solution[j] is None:
-                    if j >= len(solution) - 1:
-                        j = 0
-                    else:
-                        j += 1
-                solution[i] = solution[j]
-                solution[j] = None
-            if i >= len(solution) - 1:
-                i = 0
-            else:
-                i += 1
-
-        for c in cities:
-            solution[p1] = c
-            p1 += 1
-        return solution
-
-    @staticmethod
-    def mutation_process(new_population):
+    def mutation_process(self, new_population):
         """
         Mutates some of the solutions in the new_population passed as argument.
-        """ 
-        nb_mutation = int(round(Problem.MUTATION_RATE*Problem.NB_POPULATION))
-        history = []
-        for i in xrange(0, nb_mutation):
-            # select a solution from the new_population
-            # (can not be already mutated, so verify if in history)
-            solution = new_population[randint(0, len(new_population)-1)]
-            while solution in history:
-                solution = new_population[randint(0, len(new_population)-1)]
-            
-            # append the selected solution, to don't select a second time the same solution
-            history.append(solution)
-            
-            # mutate the selected solution
-            Problem.mutate_reverse_path(solution) # you can change with swap town mutation
-
-    @staticmethod
-    def mutate_swap_town(solution):
         """
-        Mutation of a town, where two towns are inversed
-        i.e.: [0,1,2,3,4,5,6,7,8,9,10,11]  --> select random 5 and 8
-              [0,1,2,3,4,8,6,7,5,9,10,11]
-        """
-        gene1 = randint(0, len(solution)-1)
-        gene2 = gene1
-        while gene2 == gene1:
-            gene2 = randint(0, len(solution)-1)
-        solution[gene2], solution[gene1] = solution[gene1], solution[gene2]
-
-    @staticmethod
-    def mutate_reverse_path(solution):
-        """
-        Mutation of a solution where the path between two genes are inversed.
-        i.e.: [0,1,2,3,4,5,6,7,8,9,10,11]  --> select random 5 and 8
-              [0,1,2,3,4,8,7,6,5,9,10,11]
-        """
-        gene1 = randint(0, len(solution)-1)
-        gene2 = gene1
-        while gene2 == gene1:
-            gene2 = randint(0, len(solution)-1)
-        if gene1 > gene2:
-            gene1, gene2 = gene2, gene1
-        while gene1 < gene2:
-            solution[gene1], solution[gene2] = solution[gene2], solution[gene1]
-            gene1 += 1
-            gene2 -= 1
-
+        for s in sample(new_population, int(round(Problem.MUTATION_RATE*Problem.NB_POPULATION))):
+            s.mutate()
 
 class TS_GUI:
     """
@@ -503,7 +411,7 @@ class TS_GUI:
             event = pygame.event.poll()
             
             # Verify if the user has request to quit the gui, or the maximum time has passed, or if the problem has converged.
-            if event.type == pygame.QUIT or (max_time > 0 and int(clock()-t0) >= max_time) or i-ith_best > Problem.DELTA_GENERATION:
+            if event.type == pygame.QUIT or i-ith_best > Problem.DELTA_GENERATION and max_time <= 0 or (max_time > 0 and int(clock()-t0) > max_time):
                 # Quit the loop if so.
                 running = False
 
@@ -527,13 +435,14 @@ class TS_GUI:
             t0 = clock()
         
         # Until no convergence appears or the maximum processing time reached, generate new solutions and keep the best.
-        while i-ith_best <= Problem.DELTA_GENERATION and (max_time <= 0 or int(clock()-t0) < max_time):
+        while i-ith_best <= Problem.DELTA_GENERATION and max_time <= 0 or (max_time > 0 and int(clock()-t0) < max_time):
             best_solution = problem.generate()
             if not equal_double(old_best_solution.distance, best_solution.distance):
                 old_best_solution = best_solution
                 printVerbose("Generation " + str(i) + " : " + str(best_solution))
                 ith_best = i
             i += 1
+
 
         # prepare the best solution for returning.
         return self.return_solution(problem.best_solution)
@@ -635,6 +544,7 @@ if __name__ == "__main__":
     (GUI, MAX_TIME, FILENAME, VERBOSE) = get_argv_params()
     print("arguments( gui: %s maxtime: %s filename: %s verbose: %s )" % (GUI, MAX_TIME, FILENAME, VERBOSE))
     printVerbose.VERBOSE = VERBOSE
+
     results = ga_solve(FILENAME, GUI, MAX_TIME)
     print("distance: %s" % results[0])
     print("cities:   %s" % results[1])
