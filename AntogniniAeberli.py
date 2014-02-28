@@ -2,13 +2,13 @@
 """usage: AntogniniAeberli.py [options] [params] [cityfile]
 
 options:
--h, --help Show this help
--n, --no-gui
--v, --verbose
+-h, --help      Show this help
+-n, --no-gui    Hide the Graphical User Interface during the problem resolution
+-v, --verbose	Show verbose informations during the generation of solution on the command line.
 
 params:
--m VALUE, --maxtime=VALUE  Max execution time of genetic algorithm.
-                           Negative values for infinite. Default: 0
+-m VALUE, --maxtime=VALUE  Max. execution time of genetic algorithm.
+                           Zero for infinite. Default: 0
 
 (c) 2014 by Diego Antognini and Marco Aeberli")
 """
