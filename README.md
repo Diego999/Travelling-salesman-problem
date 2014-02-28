@@ -1,5 +1,6 @@
 Travelling-salesman-problem
 ===========================
+by Diego Antognini & Marco Aeberli
 
 IA laboratory, resolved with genetic algorithm, Bsc 5 HE-Arc 2013-2014
 
