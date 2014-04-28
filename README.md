@@ -19,3 +19,7 @@ IA laboratory, resolved with genetic algorithm, Bsc 5 HE-Arc 2013-2014
 **Convergence criteria**
 
 The algorithme stop executing itself if since 50 generations the best result hasn't changed.
+
+## License
+
+This code is distributed under the terms and conditions of the [MIT license](LICENSE).
